@@ -68,9 +68,10 @@ export async function finish(tr: Transcript, audioFile: string | null, o: RunOpt
   }
   const formats = o.formats ?? c.formats;
   const cloudBytes = netStats().requests.filter(r => r.kind === "cloud-llm").reduce((a, r) => a + r.bytes, 0);
+  const doc = meeting.protocol ? "протокол" : "стенограмма";
   for (const f of formats) {
-    if (f === "html") put("протокол.html", toHtml(meeting, { audio: audioRel, sentBytes: cloudBytes }));
-    else if (f === "md") put("протокол.md", toMarkdown(meeting));
+    if (f === "html") put(`${doc}.html`, toHtml(meeting, { audio: audioRel, sentBytes: cloudBytes }));
+    else if (f === "md") put(`${doc}.md`, toMarkdown(meeting));
     else if (f === "json") put("встреча.json", JSON.stringify(meeting, null, 2));
     else if (f === "txt") put("стенограмма.txt", toTxt(tr));
     else if (f === "srt") put("стенограмма.srt", toSrt(tr));

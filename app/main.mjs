@@ -90,6 +90,23 @@ ipcMain.handle("open", (_e, p) => shell.openPath(p));
 ipcMain.handle("open-url", (_e, u) => shell.openExternal(u));
 ipcMain.handle("platform", () => process.platform);
 
-app.whenReady().then(() => { grantLoopback(); createWindow(); watchMeetings(); });
+app.whenReady().then(() => { grantLoopback(); createWindow(); watchMeetings(); if (process.env.PROTOKOLIST_SMOKE) smoke(process.env.PROTOKOLIST_SMOKE); });
+
+// Самопроверка собранного приложения (CI): обработчик, модели, распознавание файла, скриншот окна
+async function smoke(file) {
+  const fail = e => { console.error("SMOKE FAIL", e?.message ?? e); app.exit(1); };
+  setTimeout(() => fail("таймаут"), 600_000);
+  try {
+    await new Promise(r => win.webContents.once("did-finish-load", r));
+    const st = await call("status", {});
+    if (st.missing.length) await call("download", {});
+    const tr = await call("transcribe", { file });
+    const r = await call("protocol", { transcript: tr, file, noProtocol: true });
+    const png = await win.webContents.capturePage();
+    writeFileSync(join(process.env.PROTOKOLIST_SMOKE_OUT ?? tmpdir(), "smoke.png"), png.toPNG());
+    console.log("SMOKE OK", JSON.stringify({ version: st.version, speakers: tr.speakers.length, segments: tr.segments.length, files: r.files.length, net: r.netBytes }));
+    app.exit(0);
+  } catch (e) { fail(e); }
+}
 app.on("window-all-closed", () => { worker?.kill(); app.quit(); });
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

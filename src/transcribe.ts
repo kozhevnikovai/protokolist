@@ -58,7 +58,7 @@ export function vadPieces(S: Float32Array, offset = 0): Piece[] {
   const P = Math.round(RATE * 0.15);
   const drain = () => {
     while (!vad.isEmpty()) {
-      const s = vad.front();
+      const s = vad.front(false);
       const a = Math.max(0, s.start - P), b = Math.min(S.length, s.start + s.samples.length + P);
       out.push({ start: offset + a / RATE, end: offset + b / RATE, samples: S.slice(a, b), core: s.samples });
       vad.pop();
@@ -143,7 +143,7 @@ export async function transcribe(file: string, o: TranscribeOptions = {}): Promi
     const st = ex.createStream();
     st.acceptWaveform({ sampleRate: RATE, samples: p.core });
     st.inputFinished();
-    p.emb = unit(Array.from(ex.compute(st) as Float32Array));
+    p.emb = unit(Array.from(ex.compute(st, false) as Float32Array));
     o.onProgress?.("speakers", i + 1, others.length);
   });
   if (others.length) {

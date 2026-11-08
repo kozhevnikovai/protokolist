@@ -20,3 +20,9 @@ jobs:
       - name: Распознавание и спикеры на тестовой «встрече»
         shell: bash
         run: PROTOKOLIST_HOME="$HOME/.pk" node test/e2e.mjs
+      # самопроверка приложения: окно, фоновый обработчик, распознавание файла
+      - name: Приложение (Electron) — самопроверка
+        shell: bash
+        run: |
+          export PROTOKOLIST_HOME="$HOME/.pk" PROTOKOLIST_OUT="$RUNNER_TEMP/out" PROTOKOLIST_SMOKE="$PWD/test/audio/meeting-3-speakers.ogg" PROTOKOLIST_SMOKE_OUT="$RUNNER_TEMP"
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npx electron --no-sandbox app/main.mjs; else npx electron app/main.mjs; fi

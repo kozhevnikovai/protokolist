@@ -221,8 +221,8 @@ for (const [id, target] of [["#r-b24", "bitrix24"], ["#r-yg", "yougile"], ["#r-t
 // ── Архив
 async function loadArchive() {
   const ms = await pk.core("list");
-  $("#meetings").innerHTML = ms.length ? `<tr><th>Дата</th><th>Встреча</th><th>Длит.</th><th>Задач</th></tr>${ms.map(m => `<tr data-dir="${esc(m.dir)}"><td class="mono">${ruDate(m.date)}</td><td>${esc(m.title)}</td><td class="mono">${fmt(m.duration)}</td><td class="mono">${m.tasks}</td></tr>`).join("")}` : `<tr><td>Пока нет встреч. Запишите первую.</td></tr>`;
-  $$("#meetings tr[data-dir]").forEach(tr => tr.addEventListener("click", () => pk.open(tr.dataset.dir + "/протокол.html")));
+  $("#meetings").innerHTML = ms.length ? `<tr><th>Дата</th><th>Встреча</th><th>Длит.</th><th>Задач</th></tr>${ms.map(m => `<tr data-file="${esc(m.file)}"><td class="mono">${ruDate(m.date)}</td><td>${esc(m.title)}</td><td class="mono">${fmt(m.duration)}</td><td class="mono">${m.tasks}</td></tr>`).join("")}` : `<tr><td>Пока нет встреч. Запишите первую.</td></tr>`;
+  $$("#meetings tr[data-file]").forEach(tr => tr.addEventListener("click", () => pk.open(tr.dataset.file)));
 }
 let qt;
 $("#q").addEventListener("input", e => {
@@ -231,8 +231,8 @@ $("#q").addEventListener("input", e => {
     const q = e.target.value.trim();
     if (q.length < 2) return ($("#hits").innerHTML = "");
     const hits = await pk.core("search", { query: q });
-    $("#hits").innerHTML = hits.length ? hits.map(h => `<div class="hit" data-id="${esc(h.id)}"><span class="mono">${ruDate(h.date)} · ${esc(h.where)}${h.at !== null ? " · " + fmt(h.at) : ""}</span><br>${esc(h.text)} <span class="mono">— ${esc(h.title)}</span></div>`).join("") : `<p class="note">Ничего не нашлось</p>`;
-    $$(".hit").forEach(el => el.addEventListener("click", () => pk.open(state.config.outputDir + "/" + el.dataset.id + "/протокол.html")));
+    $("#hits").innerHTML = hits.length ? hits.map(h => `<div class="hit" data-file="${esc(h.file)}"><span class="mono">${ruDate(h.date)} · ${esc(h.where)}${h.at !== null ? " · " + fmt(h.at) : ""}</span><br>${esc(h.text)} <span class="mono">— ${esc(h.title)}</span></div>`).join("") : `<p class="note">Ничего не нашлось</p>`;
+    $$(".hit").forEach(el => el.addEventListener("click", () => pk.open(el.dataset.file)));
   }, 250);
 });
 
