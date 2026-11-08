@@ -6,6 +6,21 @@ const DAYS: [RegExp, number][] = [
 ];
 const NUM: Record<string, number> = { один: 1, одну: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, десять: 10, пару: 2 };
 
+// порядковые числительные: «первого», «двадцать пятого», «тридцатого»
+const ORD: [string, number][] = [["одиннадцат", 11], ["двенадцат", 12], ["тринадцат", 13], ["четырнадцат", 14], ["пятнадцат", 15], ["шестнадцат", 16], ["семнадцат", 17], ["восемнадцат", 18], ["девятнадцат", 19],
+  ["двадцат", 20], ["тридцат", 30], ["перв", 1], ["втор", 2], ["трет", 3], ["четверт", 4], ["пят", 5], ["шест", 6], ["седьм", 7], ["восьм", 8], ["девят", 9], ["десят", 10]];
+const TENS: Record<string, number> = { двадцать: 20, тридцать: 30 };
+/** «двадцать пятого ноября» → «25 ноября», «до первого декабря» → «до 1 декабря» */
+export function ordinalsToDigits(s: string): string {
+  return s.replace(/(?:(двадцать|тридцать)\s+)?([а-я]+(?:ого|ое|ая|ой|ому|ым|ом))(?=\s|$|[.,!?])/g, (m, tens: string | undefined, w: string) => {
+    const hit = ORD.find(([stem]) => w.startsWith(stem) && w.length - stem.length <= 4);
+    if (!hit) return m;
+    if (tens && hit[1] >= 10) return m;
+    const n = (tens ? TENS[tens] : 0) + hit[1];
+    return n >= 1 && n <= 31 ? String(n) : m;
+  });
+}
+
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const nextWeekday = (d: Date, wd: number, strict = true) => { let k = (wd - d.getDay() + 7) % 7; if (k === 0 && strict) k = 7; return addDays(d, k); };
@@ -13,7 +28,7 @@ const nextWeekday = (d: Date, wd: number, strict = true) => { let k = (wd - d.ge
 /** @param meetingDate YYYY-MM-DD; @returns YYYY-MM-DD или null */
 export function parseDue(text: string, meetingDate: string): string | null {
   if (!text) return null;
-  const s = text.toLowerCase().replace(/ё/g, "е");
+  const s = ordinalsToDigits(text.toLowerCase().replace(/ё/g, "е"));
   const [y, m, d] = meetingDate.split("-").map(Number);
   const base = new Date(y, m - 1, d);
 
@@ -34,6 +49,11 @@ export function parseDue(text: string, meetingDate: string): string | null {
       return iso(dt);
     }
   }
+  if ((r = s.match(/\b(\d{1,2})(?:-?го)?\s+числа/))) {
+    let dt = new Date(y, m - 1, Number(r[1]));
+    if (dt < base) dt = new Date(y, m, Number(r[1]));
+    return iso(dt);
+  }
   if (/послезавтра/.test(s)) return iso(addDays(base, 2));
   if (/завтра/.test(s)) return iso(addDays(base, 1));
   if (/сегодня|до конца дня|к вечеру/.test(s)) return iso(base);
@@ -43,13 +63,13 @@ export function parseDue(text: string, meetingDate: string): string | null {
     if (r[2].startsWith("месяц")) { const x = new Date(base); x.setMonth(x.getMonth() + n); return iso(x); }
     return iso(addDays(base, n));
   }
-  if (/конц[ау] года/.test(s)) return `${y}-12-31`;
-  if (/конц[ау] месяца/.test(s)) return iso(new Date(y, m, 0));
+  if (/кон(ец|ца|цу) года/.test(s)) return `${y}-12-31`;
+  if (/кон(ец|ца|цу) месяца/.test(s)) return iso(new Date(y, m, 0));
   if (/следующ(ей|ую) недел/.test(s)) {
     const wd = DAYS.find(([re]) => re.test(s));
     return iso(nextWeekday(addDays(nextWeekday(base, 1), -1), wd ? wd[1] : 5, false));
   }
-  if (/конц[ау] недели|на этой неделе/.test(s)) return iso(nextWeekday(base, 5, false));
+  if (/кон(ец|ца|цу) недели|на этой неделе/.test(s)) return iso(nextWeekday(base, 5, false));
   const wd = DAYS.find(([re]) => re.test(s));
   if (wd) return iso(nextWeekday(base, wd[1]));
   return null;
