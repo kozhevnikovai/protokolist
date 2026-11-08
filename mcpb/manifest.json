@@ -1,0 +1,36 @@
+{
+  "manifest_version": "0.2",
+  "name": "protokolist",
+  "display_name": "Протоколист — протоколы встреч",
+  "version": "0.0.0",
+  "description": "Расшифровка встреч на русском и протокол с решениями, задачами и сроками. Записи обрабатываются на вашем компьютере.",
+  "long_description": "Попросите Claude: «Сделай протокол встречи из файла C:\\Записи\\планёрка.m4a». Протоколист локально распознает речь (GigaAM v3) и разделит участников, а Claude составит протокол; Протоколист проверит каждую задачу по цитате из записи и сохранит HTML, DOCX и Markdown. Можно искать по всем прошлым встречам: «что решили про бюджет в октябре?». Сама запись в облако не уходит — Claude получает только текст стенограммы. Для полностью офлайн-протокола есть инструмент make_protocol со встроенной моделью.",
+  "author": { "name": "Egor Kozhevnikov", "url": "https://github.com/kozhevnikovai" },
+  "repository": { "type": "git", "url": "https://github.com/kozhevnikovai/protokolist" },
+  "homepage": "https://github.com/kozhevnikovai/protokolist",
+  "documentation": "https://github.com/kozhevnikovai/protokolist#readme",
+  "support": "https://github.com/kozhevnikovai/protokolist/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["meeting", "protocol", "transcription", "russian", "offline", "minutes"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/cli.js",
+    "mcp_config": { "command": "node", "args": ["${__dirname}/dist/cli.js", "mcp"], "env": { "PROTOKOLIST_OUT": "${user_config.output_dir}" } }
+  },
+  "tools": [
+    { "name": "transcribe_meeting", "description": "Локальная расшифровка записи с разделением по спикерам" },
+    { "name": "save_protocol", "description": "Проверка протокола по цитатам и сохранение HTML, DOCX, Markdown" },
+    { "name": "make_protocol", "description": "Протокол полностью офлайн встроенной моделью" },
+    { "name": "list_meetings", "description": "Архив встреч" },
+    { "name": "search_meetings", "description": "Поиск по решениям, задачам и стенограммам всех встреч" },
+    { "name": "get_meeting", "description": "Протокол встречи по id" }
+  ],
+  "prompts": [
+    { "name": "meeting_protocol", "description": "Протокол встречи из файла", "arguments": ["file"], "text": "Расшифруй встречу ${arguments.file} инструментом transcribe_meeting, составь протокол по правилам из ответа инструмента и сохрани его через save_protocol. Затем кратко перескажи решения и задачи." }
+  ],
+  "user_config": {
+    "output_dir": { "type": "directory", "title": "Папка для протоколов", "description": "Оставьте пустой — Документы/Протоколист", "required": false, "default": "" }
+  },
+  "compatibility": { "platforms": ["win32", "darwin"], "runtimes": { "node": ">=20.0.0" } }
+}

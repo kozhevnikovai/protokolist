@@ -1,0 +1,14 @@
+name: Ошибка
+description: Неверно распознано, перепутаны спикеры, неточный протокол или программа упала
+labels: [bug]
+body:
+  - type: dropdown
+    attributes: { label: Что не так, options: [Распознавание текста, Спикеры, Протокол (решения/задачи/сроки), Экспорт или интеграция, Запись звука, Установка, Другое] }
+    validations: { required: true }
+  - type: textarea
+    attributes: { label: Описание, description: "Что ожидали и что получили. Не прикладывайте записи с персональными данными." }
+    validations: { required: true }
+  - type: dropdown
+    attributes: { label: Как запускали, options: [Приложение для Windows, Claude Desktop (.mcpb), CLI, Другой MCP-клиент] }
+  - type: input
+    attributes: { label: Версия, ОС, процессор/видеокарта, placeholder: "1.0.0, Windows 11, i5-1135G7, без видеокарты" }

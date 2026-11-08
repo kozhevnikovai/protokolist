@@ -1,0 +1,9 @@
+name: Идея
+description: Новая функция, шаблон протокола или интеграция
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes: { label: Что нужно и зачем, description: "Какую задачу решит. Например: «шаблон протокола для планёрки отдела продаж»" }
+    validations: { required: true }
+  - type: dropdown
+    attributes: { label: Тип, options: [Шаблон протокола, Интеграция, Запись и распознавание, Интерфейс, Другое] }

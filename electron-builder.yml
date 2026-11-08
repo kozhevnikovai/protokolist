@@ -1,0 +1,57 @@
+appId: ai.kozhevnikov.protokolist
+productName: Протоколист
+executableName: Protokolist
+copyright: © 2026 Egor Kozhevnikov · MIT
+artifactName: Protokolist-${version}-${os}-${arch}.${ext}
+extraMetadata:
+  main: app/main.mjs
+directories:
+  output: release
+  buildResources: app/build
+npmRebuild: false
+files:
+  - dist/**
+  - app/**
+  - "!app/build/**"
+  - package.json
+  - "!**/*.map"
+  - "!node_modules/@node-llama-cpp/*cuda*/**"
+asarUnpack:
+  - node_modules/sherpa-onnx-*/**
+  - node_modules/ffmpeg-static/**
+  - node_modules/@node-llama-cpp/**
+  - node_modules/node-llama-cpp/**
+win:
+  target: [{ target: nsis, arch: [x64] }]
+  icon: app/build/icon.png
+  files:
+    - "!node_modules/sherpa-onnx-darwin-*/**"
+    - "!node_modules/sherpa-onnx-linux-*/**"
+    - "!node_modules/sherpa-onnx-win-arm64/**"
+    - "!node_modules/sherpa-onnx-win-ia32/**"
+    - "!node_modules/@node-llama-cpp/mac-*/**"
+    - "!node_modules/@node-llama-cpp/linux-*/**"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Протоколист
+  language: "1049"
+mac:
+  target: [{ target: dmg, arch: [arm64, x64] }]
+  icon: app/build/icon.png
+  category: public.app-category.productivity
+  identity: null
+  hardenedRuntime: false
+  extendInfo:
+    NSMicrophoneUsageDescription: Протоколист записывает ваш микрофон для протокола встречи. Запись обрабатывается только на этом компьютере.
+    NSScreenCaptureUsageDescription: Нужно для записи звука онлайн-встречи (Zoom, Телемост, Контур.Толк). Видео не записывается.
+    NSAudioCaptureUsageDescription: Нужно для записи звука онлайн-встречи. Запись обрабатывается только на этом компьютере.
+  files:
+    - "!node_modules/sherpa-onnx-win-*/**"
+    - "!node_modules/sherpa-onnx-linux-*/**"
+    - "!node_modules/@node-llama-cpp/win-*/**"
+    - "!node_modules/@node-llama-cpp/linux-*/**"
+dmg:
+  title: Протоколист

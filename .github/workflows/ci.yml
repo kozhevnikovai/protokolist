@@ -1,0 +1,22 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix: { os: [ubuntu-latest, windows-latest, macos-latest] }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      # сквозная проверка: модели распознавания + реальная речь (RuLibriSpeech, общественное достояние)
+      - uses: actions/cache@v4
+        with: { path: ~/.pk/models, key: asr-models-v1 }
+      - name: Распознавание и спикеры на тестовой «встрече»
+        shell: bash
+        run: PROTOKOLIST_HOME="$HOME/.pk" node test/e2e.mjs

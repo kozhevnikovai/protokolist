@@ -1,0 +1,50 @@
+name: release
+on:
+  release: { types: [published] }
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: --win }
+          - { os: macos-latest, target: --mac --arm64 }
+          - { os: macos-15-intel, target: --mac --x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build && npm test
+      - name: Установщик приложения
+        run: npx electron-builder ${{ matrix.target }} --publish never
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
+      - name: Расширение для Claude Desktop
+        run: node scripts/build-mcpb.mjs
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: |
+            release/*.exe
+            release/*.dmg
+            build/*.mcpb
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'release'
+        with: { name: "build-${{ matrix.os }}", path: "release/*.exe\nrelease/*.dmg\nbuild/*.mcpb" }
+  npm:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, registry-url: https://registry.npmjs.org }
+      - run: npm ci && npm run build
+      - name: npm publish (если задан NPM_TOKEN)
+        continue-on-error: true
+        if: ${{ env.NODE_AUTH_TOKEN != '' }}
+        run: npm publish --access public

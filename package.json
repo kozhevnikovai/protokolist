@@ -1,0 +1,68 @@
+{
+  "name": "protokolist",
+  "version": "1.0.0",
+  "description": "Протоколист: запись встречи → протокол с решениями и задачами. 100% локально, русский язык, без облака.",
+  "type": "module",
+  "bin": {
+    "protokolist": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "eval": "node evals/run.mjs",
+    "prepublishOnly": "npm run build && npm test",
+    "build:mcpb": "npm run build && node scripts/build-mcpb.mjs"
+  },
+  "keywords": [
+    "meeting-minutes",
+    "protocol",
+    "transcription",
+    "speech-to-text",
+    "russian",
+    "offline",
+    "gigaam",
+    "diarization",
+    "mcp",
+    "claude"
+  ],
+  "author": "Egor Kozhevnikov (https://github.com/kozhevnikovai)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kozhevnikovai/protokolist.git"
+  },
+  "homepage": "https://github.com/kozhevnikovai/protokolist#readme",
+  "dependencies": {
+    "@fontsource/geologica": "^5.3.0",
+    "@fontsource/martian-mono": "^5.3.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "commander": "^15.1.0",
+    "docx": "^9.15.3",
+    "ffmpeg-static": "^5.3.0",
+    "node-llama-cpp": "^3.22.3",
+    "sherpa-onnx-node": "^2.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "jszip": "^3.10.2",
+    "playwright-core": "^1.65.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
