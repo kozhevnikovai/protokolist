@@ -57,6 +57,7 @@ export function toHtml(m: Meeting, o: HtmlOptions = {}): string {
   const H = (title: string) => `<h2><span class="n">${String(++n).padStart(2, "0")}</span>${esc(title)}</h2>`;
   const S: string[] = [];
   if (p) {
+    if (p.meta.warnings?.length) S.push(p.meta.warnings.map(w => `<p class="review">● ${esc(w)}</p>`).join(""));
     if (p.summary) S.push(H("Кратко"), `<p class="summary">${esc(p.summary)}</p>`);
     if (p.decisions.length) S.push(H("Решения"), `<ol>${p.decisions.map(d => `<li>${esc(d.text)} ${T(d.t)}</li>`).join("")}</ol>`);
     if (p.tasks.length) S.push(H("Задачи"), `<table><tr><th>№</th><th>Задача</th><th>Ответственный</th><th>Срок</th><th>Где сказано</th></tr>${p.tasks.map((t, i) =>

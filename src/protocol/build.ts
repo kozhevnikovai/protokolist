@@ -14,8 +14,8 @@ export interface ProtocolOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
-const str = { type: "string" } as const;
-const arr = (items: object) => ({ type: "array", items });
+const str = { type: "string", maxLength: 400 } as const;
+const arr = (items: object, max = 20) => ({ type: "array", items, maxItems: max });
 
 function chunkSchema(t: Template) {
   const keys = Object.keys(t.extra);
@@ -104,10 +104,12 @@ export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions
   const sys = system(tpl, participants);
   const schema = chunkSchema(tpl);
   const parts: Chunk[] = [];
+  const warnings: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     o.onProgress?.(i, chunks.length + 1);
     const head = chunks.length > 1 ? `Это часть ${i + 1} из ${chunks.length} встречи.\n\n` : "";
-    parts.push(await llm.json<Chunk>(sys, `${head}Стенограмма:\n${chunks[i]}`, schema));
+    try { parts.push(await llm.json<Chunk>(sys, `${head}Стенограмма:\n${chunks[i]}`, schema)); }
+    catch (e) { warnings.push(`Часть ${i + 1} из ${chunks.length} не разобрана моделью (${(e as Error).message}) — проверьте по стенограмме`); }
   }
   o.onProgress?.(chunks.length, chunks.length + 1);
 
@@ -132,7 +134,7 @@ export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions
   const fin = await llm.json<{ title: string; summary: string; missedAgenda: string[] }>(
     "Ты — секретарь совещаний. По итогам встречи дай короткое название (до 8 слов), резюме из 2–4 предложений по-деловому" +
       (o.agenda?.length ? " и список пунктов повестки, которые на встрече не обсуждались (если все обсудили — пустой список)." : ". missedAgenda — пустой список."),
-    digest, finalSchema, 600);
+    digest, finalSchema, 600).catch(() => ({ title: topics[0]?.title ?? "Встреча", summary: "", missedAgenda: [] as string[] }));
   o.onProgress?.(chunks.length + 1, chunks.length + 1);
 
   return {
@@ -142,7 +144,7 @@ export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions
     topics, decisions, tasks, openQuestions,
     missedAgenda: o.agenda?.length ? (fin.missedAgenda ?? []) : [],
     extra,
-    meta: { model: llm.name, seconds: Math.round((Date.now() - t0) / 1000), generatedAt: new Date().toISOString() },
+    meta: { model: llm.name, seconds: Math.round((Date.now() - t0) / 1000), generatedAt: new Date().toISOString(), ...(warnings.length ? { warnings } : {}) },
   };
 }
 

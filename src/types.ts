@@ -73,7 +73,7 @@ export interface Protocol {
   missedAgenda: string[];
   /** Особые поля шаблона (продажи: следующий шаг, возражения и т. п.) */
   extra: Record<string, string[]>;
-  meta: { model: string; seconds: number; generatedAt: string };
+  meta: { model: string; seconds: number; generatedAt: string; /** Части встречи, которые модель не смогла разобрать */ warnings?: string[] };
 }
 
 export interface Analytics {

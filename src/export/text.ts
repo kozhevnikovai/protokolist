@@ -14,6 +14,7 @@ export function toMarkdown(m: Meeting): string {
   L.push(`# ${p?.title ?? "Стенограмма встречи"}`, "");
   L.push(`**Дата:** ${ruDate(tr.date)} · **Длительность:** ${fmtTime(tr.duration)} · **Участники:** ${tr.speakers.map(s => s.label).join(", ")}`, "");
   if (p) {
+    if (p.meta.warnings?.length) L.push(...p.meta.warnings.map(w => `> ⚠ ${w}`), "");
     if (p.summary) L.push("## Кратко", "", p.summary, "");
     if (p.decisions.length) {
       L.push("## Решения", "");

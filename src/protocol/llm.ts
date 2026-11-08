@@ -42,12 +42,19 @@ async function local(o: LLMOptions): Promise<LLM> {
   return {
     name: `${file.split(/[\\/]/).pop()} · ${device}`,
     async json<T>(system: string, user: string, schema: object, maxTokens = 3000) {
-      await sequence.clearHistory();
-      const session = new LlamaChatSession({ contextSequence: sequence, systemPrompt: system, autoDisposeSequence: false });
       const grammar = await llama.createGrammarForJsonSchema(schema as any);
-      const res = await session.prompt(user, { grammar, temperature: 0.1, maxTokens });
-      session.dispose({ disposeSequence: false });
-      return grammar.parse(res) as T;
+      // маленькая модель иногда зацикливается внутри строки — штраф за повторы, при сбое вторая попытка строже
+      for (const [i, penalty] of [1.1, 1.25].entries()) {
+        await sequence.clearHistory();
+        const session = new LlamaChatSession({ contextSequence: sequence, systemPrompt: system, autoDisposeSequence: false });
+        try {
+          const res = await session.prompt(user, { grammar, temperature: i ? 0 : 0.1, maxTokens, repeatPenalty: { penalty, lastTokens: 128, frequencyPenalty: 0.1 } });
+          return grammar.parse(res) as T;
+        } catch (e) {
+          if (i) throw new Error(`Модель не смогла выдать корректный ответ: ${(e as Error).message}`);
+        } finally { session.dispose({ disposeSequence: false }); }
+      }
+      throw new Error("недостижимо");
     },
     async dispose() { await context.dispose(); await model.dispose(); await llama.dispose(); },
   };
