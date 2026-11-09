@@ -244,7 +244,9 @@ async function startRec() {
   for (const [k, s] of Object.entries(parts)) {
     files[k] = await pk.recPath(`${stamp}-${k}.webm`);
     recorders[k] = new MediaRecorder(s, { mimeType: "audio/webm;codecs=opus", audioBitsPerSecond: 64000 });
-    recorders[k].ondataavailable = e => { if (e.data.size) writes.push(e.data.arrayBuffer().then(b => pk.recChunk(`${stamp}-${k}.webm`, new Uint8Array(b)))); };
+    // куски дописываются строго по порядку: цепочка промисов на каждую дорожку
+    let chain = Promise.resolve();
+    recorders[k].ondataavailable = e => { if (e.data.size) { const d = e.data; chain = chain.then(async () => pk.recChunk(`${stamp}-${k}.webm`, new Uint8Array(await d.arrayBuffer()))); writes.push(chain); } };
     recorders[k].start(1000);
     stops.push(meter(s, $(k === "mic" ? "#m-mic i" : "#m-sys i"), k === "mic" ? l => { if (l > 0.3) heard = true; } : undefined));
     // гарнитуру выдернули — продолжаем писать звук компьютера

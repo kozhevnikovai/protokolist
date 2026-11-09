@@ -10,7 +10,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8"));
 
 // Одна копия приложения: вторая просто показывает первое окно (иначе две копии пишут в одни файлы)
-if (!app.requestSingleInstanceLock()) app.quit();
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
 // Windows: своя иконка и группировка в панели задач, а не иконка Electron
 if (process.platform === "win32") app.setAppUserModelId("ai.kozhevnikov.protokolist");
@@ -187,7 +188,7 @@ ipcMain.handle("platform", () => process.platform);
 // старые временные записи v1.0 из %TEMP%
 function cleanTemp() { try { rmSync(join(tmpdir(), "protokolist-rec"), { recursive: true, force: true }); } catch { /* занято */ } }
 
-app.whenReady().then(() => { migrateSecrets(); cleanTemp(); grantLoopback(); createWindow(); watchMeetings(); if (process.env.PROTOKOLIST_SMOKE) smoke(process.env.PROTOKOLIST_SMOKE); });
+app.whenReady().then(() => { if (!gotLock) return; migrateSecrets(); cleanTemp(); grantLoopback(); createWindow(); watchMeetings(); if (process.env.PROTOKOLIST_SMOKE) smoke(process.env.PROTOKOLIST_SMOKE); });
 
 // Самопроверка собранного приложения (CI): обработчик, модели, распознавание файла, скриншот окна
 async function smoke(file) {
