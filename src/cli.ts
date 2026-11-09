@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { Command } from "commander";
 import { hitLine, listMeetings, searchMeetings } from "./archive.js";
-import { loadConfig, saveConfig } from "./config.js";
+import { loadConfig, saveConfig, setPath } from "./config.js";
 import { download, missing, PACKS } from "./models.js";
 import { FORMATS, run } from "./pipeline.js";
 import { TEMPLATES } from "./protocol/templates.js";
@@ -77,10 +77,8 @@ program.command("config").description("показать или изменить 
   if (!key) return console.log(JSON.stringify(c, (k, v) => (/token|key|webhook/i.test(k) && typeof v === "string" ? v.slice(0, 6) + "…" : v), 2));
   let v: any = value;
   try { v = JSON.parse(value!); } catch { /* строка */ }
-  const path = key.split(".");
   const patch: any = {};
-  let cur = patch, src = c;
-  path.forEach((p, i) => { if (i === path.length - 1) cur[p] = v; else { cur[p] = { ...(src?.[p] ?? {}) }; cur = cur[p]; src = src?.[p]; } });
+  setPath(patch, key, v);
   saveConfig(patch);
   console.log(`${key} = ${JSON.stringify(v)}`);
 });

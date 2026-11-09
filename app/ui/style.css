@@ -49,3 +49,22 @@ table.list td{cursor:pointer}table.list tr:hover td{background:var(--plate)}
 .note{color:var(--pencil);font-size:13px}.note.err{color:var(--sigt)}
 ul.plain{list-style:none;padding:0}ul.plain li{border-bottom:1px solid var(--plate);padding:8px 0}ul.plain small{color:var(--pencil)}
 .banner{border:1px solid var(--sig);padding:10px 14px;margin:0 0 18px;display:flex;justify-content:space-between;align-items:center}
+/* v1.1: фоновые задачи, сообщения, подключения */
+.brand span{font-size:12px;color:var(--pencil)}
+.job{all:unset;cursor:pointer;margin:8px 16px;padding:10px 12px;border:1px solid var(--ink);display:flex;flex-direction:column;gap:6px;font-size:13px}.job:hover{background:var(--plate)}.job small{color:var(--pencil);font-size:11px}
+.bar.thin{height:6px;margin:0}
+#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:9;max-width:420px}
+.toast{background:var(--ink);color:#fff;padding:12px 16px;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.15)}.toast.err{background:var(--sigt)}.toast.ok{background:var(--ok)}
+.gate{border:1px solid var(--sig);padding:12px 16px;margin:16px 0;display:flex;gap:16px;align-items:center;justify-content:space-between}
+.drop.off{opacity:.5}
+label .inline{display:flex;gap:8px;margin-top:4px}label .inline input{margin-top:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{border:1px solid var(--ink);padding:16px}.card h3{margin:0 0 6px;font-size:16px;display:flex;justify-content:space-between;align-items:center}.card p{margin:0 0 8px;font-size:13px;color:var(--pencil)}
+.card details{font-size:13px;margin-bottom:8px}.card summary{cursor:pointer}.card ol{padding-left:18px;margin:6px 0}
+.status{font-size:11px;font-weight:400;color:var(--pencil);border:1px solid var(--axis);padding:1px 6px}.status.on{color:var(--ok);border-color:var(--ok)}
+button.link{all:unset;cursor:pointer;color:var(--pencil);font-size:13px;text-decoration:underline}
+.note.ok{color:var(--ok)}
+ul.packs li{display:flex;justify-content:space-between;gap:12px}ul.packs b{font-weight:400;white-space:nowrap}
+.mic-row{align-items:end}.mic-test{display:flex;flex-direction:column;gap:4px;margin:6px 0}.mic-test .note.err,#mic-hint.err{color:var(--sigt)}
+.check.small{font-size:13px;color:var(--pencil)}
+[hidden]{display:none!important}

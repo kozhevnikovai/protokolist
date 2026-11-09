@@ -2,6 +2,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { analyze } from "./analytics.js";
+import { mixTo } from "./audio.js";
 import type { Config } from "./config.js";
 import { toDocx } from "./export/docx.js";
 import { toHtml } from "./export/html.js";
@@ -57,14 +58,22 @@ export async function finish(tr: Transcript, audioFile: string | null, o: RunOpt
   }
   const title = meeting.protocol?.title ?? basename(tr.source, extname(tr.source));
   const dir = o.outDir ?? join(c.outputDir, `${tr.date} ${slug(title)}`);
-  mkdirSync(dir, { recursive: true });
+  try { mkdirSync(dir, { recursive: true }); }
+  catch (e: any) { throw new Error(/EACCES|EPERM|EROFS/.test(e.code) ? `Нет доступа к папке протоколов «${c.outputDir}». Выберите другую папку в настройках.` : e.code === "ENOSPC" ? "На диске закончилось место" : e.message); }
   const files: string[] = [];
   const put = (name: string, data: string | Buffer) => { const p = join(dir, name); writeFileSync(p, data); files.push(p); return p; };
 
   let audioRel: string | undefined;
   if (audioFile && o.keepAudio && !c.deleteAudio && existsSync(audioFile)) {
-    audioRel = "запись" + extname(audioFile);
-    copyFileSync(audioFile, join(dir, audioRel));
+    // запись Протоколиста из двух дорожек: сводим компьютер + микрофон, иначе в записи не будет вашего голоса
+    if (o.micFile && existsSync(o.micFile)) {
+      audioRel = "запись.webm";
+      try { await mixTo([audioFile, o.micFile], join(dir, audioRel)); }
+      catch { audioRel = "запись" + extname(audioFile); copyFileSync(audioFile, join(dir, audioRel)); }
+    } else {
+      audioRel = "запись" + extname(audioFile);
+      copyFileSync(audioFile, join(dir, audioRel));
+    }
   }
   const formats = o.formats ?? c.formats;
   const cloudBytes = netStats().requests.filter(r => r.kind === "cloud-llm").reduce((a, r) => a + r.bytes, 0);
@@ -92,7 +101,7 @@ export async function finish(tr: Transcript, audioFile: string | null, o: RunOpt
       sent.push(await sendToTelegram(out, c.telegram, docx && !c.maskOnSend ? [{ name: basename(docx), data: readFileSync(docx), mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }] : []));
     }
   }
-  if (audioFile && c.deleteAudio && existsSync(audioFile)) { try { unlinkSync(audioFile); } catch { /* файл занят — оставим */ } }
+  if (c.deleteAudio) for (const f of [audioFile, o.micFile]) if (f && existsSync(f)) { try { unlinkSync(f); } catch { /* файл занят — оставим */ } }
   return { dir, files, meeting, sent, netBytes: netStats().sentBytes };
 }
 

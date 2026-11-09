@@ -96,10 +96,44 @@ function dedupe<T extends { text: string }>(items: T[]): T[] {
 
 interface Chunk { topics: Topic[]; decisions: { text: string; topic: string; quote: string }[]; tasks: { text: string; owner: string; due: string; quote: string }[]; openQuestions: string[]; extra?: Record<string, string[]> }
 
+/** Меньше стольких слов — запись слишком короткая, модель не вызываем, чтобы не додумывать */
+export const MIN_WORDS = 30;
+
+/** Оставляем только предложения резюме, слова которых есть в стенограмме (≥ 50 % значимых слов) */
+export function groundSummary(tr: Transcript, summary: string): string {
+  const vocab = new Set(tr.segments.flatMap(s => normWords(s.text)).map(stem));
+  const sentences = summary.split(/(?<=[.!?…])\s+/).map(s => s.trim()).filter(Boolean);
+  return sentences.filter(s => {
+    const w = normWords(s).filter(x => x.length > 3).map(stem);
+    if (!w.length) return false;
+    return w.filter(x => vocab.has(x)).length / w.length >= 0.5;
+  }).join(" ");
+}
+// грубая основа слова: русские окончания мешают сравнивать «решили» и «решение»
+const stem = (w: string) => (w.length > 5 ? w.slice(0, 5) : w);
+
+/** Резюме без модели: только факты, которые посчитал код */
+export function plainSummary(words: number, decisions: number, tasks: number, topics: string[]): string {
+  if (words < MIN_WORDS) return `Короткая запись (${words} ${plural(words, "слово", "слова", "слов")}): решений и задач не прозвучало.`;
+  const parts = [topics.length ? `Обсудили: ${topics.slice(0, 4).join("; ")}.` : "", decisions ? `Решений: ${decisions}.` : "Решений не прозвучало.", tasks ? `Задач: ${tasks}.` : "Задач не прозвучало."];
+  return parts.filter(Boolean).join(" ");
+}
+const plural = (n: number, a: string, b: string, c: string) => (n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
+
 export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions = {}): Promise<Protocol> {
   const t0 = Date.now();
   const tpl = getTemplate(o.template);
   const participants = tr.speakers.map(s => s.label);
+  const words = tr.segments.reduce((a, s) => a + normWords(s.text).length, 0);
+  if (words < MIN_WORDS) {
+    o.onProgress?.(1, 1);
+    return {
+      title: "Короткая запись", date: tr.date, template: tpl.id, participants,
+      summary: plainSummary(words, 0, 0, []), topics: [], decisions: [], tasks: [], openQuestions: [],
+      missedAgenda: o.agenda ?? [], extra: Object.fromEntries(Object.keys(tpl.extra).map(k => [k, []])),
+      meta: { model: "не вызывалась", seconds: 0, generatedAt: new Date().toISOString() },
+    };
+  }
   const lines = tr.segments.map(s => `[${fmtTime(s.start)}] ${speakerLabel(tr, s.speaker)}: ${s.text}`);
   const chunks = chunkTranscript(lines, o.chunkChars ?? 9000);
   const sys = system(tpl, participants);
@@ -128,21 +162,28 @@ export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions
   const openQuestions = uniq(parts.flatMap(p => p.openQuestions ?? []));
 
   const digest = [
-    `Темы: ${topics.map(x => `${x.title} — ${x.points.join("; ")}`).join(" | ")}`,
-    `Решения: ${decisions.map(d => d.text).join("; ")}`,
-    `Задачи: ${tasks.map(x => `${x.text} (${x.owner || "ответственный не назван"})`).join("; ")}`,
+    `Темы: ${topics.map(x => `${x.title} — ${x.points.join("; ")}`).join(" | ") || "нет"}`,
+    `Решения: ${decisions.map(d => d.text).join("; ") || "нет"}`,
+    `Задачи: ${tasks.map(x => `${x.text} (${x.owner || "ответственный не назван"})`).join("; ") || "нет"}`,
     o.agenda?.length ? `Повестка: ${o.agenda.join("; ")}` : "",
+    // сама стенограмма (начало) — чтобы резюме опиралось на речь, а не только на выжимку
+    `Стенограмма (фрагмент):\n${lines.join("\n").slice(0, 6000)}`,
   ].filter(Boolean).join("\n");
   const fin = await llm.json<{ title: string; summary: string; missedAgenda: string[] }>(
-    "Ты — секретарь совещаний. По итогам встречи дай короткое название (до 8 слов), резюме из 2–4 предложений по-деловому" +
-      (o.agenda?.length ? " и список пунктов повестки, которые на встрече не обсуждались (если все обсудили — пустой список)." : ". missedAgenda — пустой список."),
+    "Ты — секретарь совещаний. По итогам встречи дай короткое название (до 8 слов) и резюме из 1–3 предложений по-деловому. " +
+      "Только то, что есть в стенограмме и выжимке: не придумывай решений, договорённостей и цифр. Если решений или задач нет — так и напиши." +
+      (o.agenda?.length ? " Добавь список пунктов повестки, которые на встрече не обсуждались (если все обсудили — пустой список)." : " missedAgenda — пустой список."),
     digest, finalSchema, 600).catch(() => ({ title: topics[0]?.title ?? "Встреча", summary: "", missedAgenda: [] as string[] }));
   o.onProgress?.(chunks.length + 1, chunks.length + 1);
+  // каждое предложение резюме сверяем со стенограммой; неподтверждённое выбрасываем
+  const grounded = groundSummary(tr, fin.summary?.trim() ?? "");
+  const summary = grounded || plainSummary(words, decisions.length, tasks.length, topics.map(x => x.title));
+  if (grounded !== (fin.summary?.trim() ?? "")) warnings.push("Часть резюме не подтвердилась стенограммой и убрана");
 
   return {
     title: fin.title?.trim() || "Встреча",
     date: tr.date, template: tpl.id, participants,
-    summary: fin.summary?.trim() ?? "",
+    summary,
     topics, decisions, tasks, openQuestions,
     missedAgenda: o.agenda?.length ? (fin.missedAgenda ?? []) : [],
     extra,

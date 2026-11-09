@@ -52,10 +52,38 @@ function embedder(n: number) {
 }
 
 /** Нарезка на фразы детектором речи; каждый кусок с запасом 0,15 с по краям, чтобы не обрезать слова */
+/**
+ * Тихая запись (гарнитура 3,5 мм, микрофон далеко) — поднимаем громкость до пика ≈ 0,7, не больше чем в 30 раз,
+ * иначе поиск речи пропускает тихие слова.
+ */
+export function normalize(S: Float32Array): Float32Array {
+  if (!S.length) return S;
+  const step = Math.max(1, Math.floor(S.length / 200000));
+  const a: number[] = [];
+  for (let i = 0; i < S.length; i += step) a.push(Math.abs(S[i]));
+  a.sort((x, y) => x - y);
+  const p = a[Math.floor(a.length * 0.999)] || 0;
+  if (p < 1e-4) return S; // тишина — не усиливаем шум
+  const g = Math.min(30, 0.7 / p);
+  if (g <= 1.05) return S;
+  const out = new Float32Array(S.length);
+  for (let i = 0; i < S.length; i++) out[i] = Math.max(-1, Math.min(1, S[i] * g));
+  return out;
+}
+
+/** Короткие фразы («проверка записи») модель распознаёт лучше с тишиной по краям */
+function padShort(S: Float32Array): Float32Array {
+  if (S.length > RATE * 3) return S;
+  const pad = Math.round(RATE * 0.5);
+  const out = new Float32Array(S.length + pad * 2);
+  out.set(S, pad);
+  return out;
+}
+
 export function vadPieces(S: Float32Array, offset = 0): Piece[] {
   const vad = new (lib().Vad)({ sileroVad: { model: modelPath("vad/silero_vad.onnx"), threshold: 0.5, minSilenceDuration: 0.5, minSpeechDuration: 0.25, maxSpeechDuration: 20, windowSize: 512 }, sampleRate: RATE, numThreads: 1 }, 120);
   const out: Piece[] = [];
-  const P = Math.round(RATE * 0.15);
+  const P = Math.round(RATE * 0.15); // запас по краям, чтобы не обрезать слова
   const drain = () => {
     while (!vad.isEmpty()) {
       const s = vad.front(false);
@@ -127,8 +155,8 @@ export async function transcribe(file: string, o: TranscribeOptions = {}): Promi
   const t0 = Date.now();
   o.onProgress?.("decode", 0, 1);
   const stereo = !o.micFile && o.channels !== "mix" && (await fileChannels(file)) === 2;
-  const main = await decode(file, stereo ? 1 : undefined);
-  const mic = o.micFile ? await decode(o.micFile) : stereo ? await decode(file, 0) : null;
+  const main = normalize(await decode(file, stereo ? 1 : undefined));
+  const mic = o.micFile ? normalize(await decode(o.micFile).catch(() => new Float32Array(0))) : stereo ? normalize(await decode(file, 0)) : null;
   o.onProgress?.("decode", 1, 1);
   const duration = Math.max(main.length, mic?.length ?? 0) / RATE;
 
@@ -159,7 +187,7 @@ export async function transcribe(file: string, o: TranscribeOptions = {}): Promi
   const all = [...others, ...mine];
   all.forEach((p, i) => {
     const st = rec.createStream();
-    st.acceptWaveform({ sampleRate: RATE, samples: p.samples });
+    st.acceptWaveform({ sampleRate: RATE, samples: padShort(p.samples) });
     rec.decode(st);
     p.text = String(rec.getResult(st).text ?? "").trim();
     if (o.glossary?.length) p.text = applyGlossary(p.text, o.glossary);

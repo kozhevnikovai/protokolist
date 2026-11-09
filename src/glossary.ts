@@ -23,7 +23,7 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** Разбор словаря из текста: по строке на термин, варианты через «=»: «Битрикс24 = битрикс двадцать четыре» */
 export function parseGlossary(text: string): GlossaryEntry[] {
   return text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith("#")).map(l => {
-    const [term, ...vars] = l.split("=").map(s => s.trim()).filter(Boolean);
+    const [term, ...vars] = l.split("=").flatMap((s, i) => (i ? s.split(",") : [s])).map(s => s.trim()).filter(Boolean); // варианты через «=» или запятую
     return { term, variants: vars };
   });
 }

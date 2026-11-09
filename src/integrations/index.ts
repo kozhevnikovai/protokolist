@@ -25,6 +25,8 @@ export interface Bitrix24Config {
 }
 
 export async function sendToBitrix24(p: Protocol, c: Bitrix24Config): Promise<SendResult> {
+  const bad = validateBitrixWebhook(c.webhook);
+  if (bad) return { target: "Битрикс24", ok: 0, failed: [{ task: "подключение", error: bad }], links: [] };
   const base = c.webhook.replace(/\/?$/, "/");
   const owner = c.defaultResponsible ?? Number(base.match(/\/rest\/(\d+)\//)?.[1] ?? 1);
   const call = async (method: string, body: object) => {
@@ -53,7 +55,7 @@ export async function sendToBitrix24(p: Protocol, c: Bitrix24Config): Promise<Se
       res.ok++;
       const id = r?.task?.id;
       if (id) res.links.push(`${base.replace(/\/rest\/.*$/, "")}/company/personal/user/${rid}/tasks/task/view/${id}/`);
-    } catch (e: any) { res.failed.push({ task: t.text, error: e.message }); }
+    } catch (e: any) { res.failed.push({ task: t.text, error: friendly(e) }); }
   }
   return res;
 }
@@ -77,7 +79,7 @@ export async function sendToYouGile(p: Protocol, c: YouGileConfig): Promise<Send
       const r = await netFetch("integration", `${base}/tasks`, { method: "POST", headers: H, body: JSON.stringify(body) });
       if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
       res.ok++;
-    } catch (e: any) { res.failed.push({ task: t.text, error: e.message }); }
+    } catch (e: any) { res.failed.push({ task: t.text, error: friendly(e) }); }
   }
   return res;
 }
@@ -106,6 +108,67 @@ export async function sendToTelegram(p: Protocol, c: TelegramConfig, files: { na
       if (!rr.ok) throw new Error(rr.description);
       res.ok++;
     }
-  } catch (e: any) { res.failed.push({ task: "сообщение", error: e.message }); }
+  } catch (e: any) { res.failed.push({ task: "сообщение", error: friendly(e) }); }
   return res;
+}
+
+// ── Проверка подключений: кнопка «Проверить» в настройках. Ничего из встреч не отправляет.
+export interface CheckResult { ok: boolean; message: string }
+
+/** Вебхук Битрикс24: только https и только адрес портала, не локальная сеть */
+export function validateBitrixWebhook(url: string): string | null {
+  let u: URL;
+  try { u = new URL(url); } catch { return "Это не адрес. Скопируйте вебхук целиком: https://ваш-портал.bitrix24.ru/rest/1/код/"; }
+  if (u.protocol !== "https:") return "Вебхук должен начинаться с https://";
+  if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.|\[?::1\]?$)|^172\.(1[6-9]|2\d|3[01])\./i.test(u.hostname)) return "Адрес в локальной сети не подходит — нужен адрес вашего портала Битрикс24";
+  if (!/\/rest\/\d+\/[^/]+\/?$/.test(u.pathname)) return "Похоже на неполный вебхук: в конце должно быть /rest/номер/код/";
+  return null;
+}
+
+export function friendly(e: unknown): string {
+  const m = (e as Error)?.message ?? String(e);
+  const cause = (e as any)?.cause?.code ?? "";
+  if (/TimeoutError|aborted/i.test((e as any)?.name ?? "") || /timeout/i.test(m)) return "Сервис не ответил за 20 секунд — проверьте интернет";
+  if (/ENOTFOUND|EAI_AGAIN/.test(cause)) return "Адрес не найден — проверьте, что он скопирован правильно, и интернет";
+  if (/ECONNREFUSED|ECONNRESET|fetch failed/.test(cause + m)) return "Нет соединения с сервисом — проверьте интернет";
+  return m;
+}
+
+export async function checkBitrix24(c: Bitrix24Config): Promise<CheckResult> {
+  const bad = validateBitrixWebhook(c.webhook ?? "");
+  if (bad) return { ok: false, message: bad };
+  try {
+    const r = await netFetch("integration", `${c.webhook.replace(/\/?$/, "/")}profile.json`, { method: "POST" });
+    const j: any = await r.json().catch(() => ({}));
+    if (j.error) return { ok: false, message: j.error === "insufficient_scope" ? "У вебхука нет нужных прав: включите «Задачи» и «Пользователи»" : j.error === "expired_token" || r.status === 401 ? "Вебхук недействителен — создайте новый" : j.error_description || j.error };
+    if (!r.ok) return { ok: false, message: `Портал ответил HTTP ${r.status}` };
+    return { ok: true, message: `Подключено: ${[j.result?.NAME, j.result?.LAST_NAME].filter(Boolean).join(" ") || "портал отвечает"}` };
+  } catch (e) { return { ok: false, message: friendly(e) }; }
+}
+
+export async function checkYouGile(c: YouGileConfig): Promise<CheckResult> {
+  if (!c.key) return { ok: false, message: "Вставьте ключ API" };
+  if (!c.columnId) return { ok: false, message: "Укажите ID колонки, куда класть задачи" };
+  const base = (c.baseUrl ?? "https://ru.yougile.com").replace(/\/$/, "") + "/api-v2";
+  try {
+    const r = await netFetch("integration", `${base}/columns/${encodeURIComponent(c.columnId)}`, { headers: { authorization: `Bearer ${c.key}` } });
+    if (r.status === 401 || r.status === 403) return { ok: false, message: "Ключ не подходит — создайте новый в YouGile" };
+    if (r.status === 404) return { ok: false, message: "Колонка с таким ID не найдена" };
+    if (!r.ok) return { ok: false, message: `YouGile ответил HTTP ${r.status}` };
+    const j: any = await r.json().catch(() => ({}));
+    return { ok: true, message: `Подключено: колонка «${j.title ?? c.columnId}»` };
+  } catch (e) { return { ok: false, message: friendly(e) }; }
+}
+
+export async function checkTelegram(c: TelegramConfig): Promise<CheckResult> {
+  if (!/^\d+:[\w-]{30,}$/.test(c.token ?? "")) return { ok: false, message: "Токен выглядит неверно. Он выглядит так: 123456789:AAE…" };
+  const api = `https://api.telegram.org/bot${c.token}`;
+  try {
+    const me: any = await (await netFetch("integration", `${api}/getMe`)).json();
+    if (!me.ok) return { ok: false, message: "Telegram не принял токен — проверьте его у @BotFather" };
+    if (!c.chatId) return { ok: false, message: `Бот @${me.result.username} найден. Теперь укажите ID чата` };
+    const ch: any = await (await netFetch("integration", `${api}/getChat?chat_id=${encodeURIComponent(c.chatId)}`)).json();
+    if (!ch.ok) return { ok: false, message: `Бот @${me.result.username} не видит этот чат. Напишите боту /start или добавьте его в группу` };
+    return { ok: true, message: `Подключено: @${me.result.username} → ${ch.result.title ?? ch.result.first_name ?? c.chatId}` };
+  } catch (e) { return { ok: false, message: friendly(e) }; }
 }
