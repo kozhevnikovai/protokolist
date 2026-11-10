@@ -162,7 +162,7 @@ ipcMain.handle("core", async (_e, method, args) => {
     return maskConfig(await call("saveConfig", { patch }));
   }
   const r = await call(method, args);
-  if (method === "status") r.config = maskConfig(r.config);
+  if (method === "status" || method === "setModel") r.config = maskConfig(r.config);
   return r;
 });
 

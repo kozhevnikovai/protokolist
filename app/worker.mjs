@@ -7,10 +7,20 @@ const progress = (stage, done, total) => port.postMessage({ type: "progress", st
 const net = () => port.postMessage({ type: "net", ...core.netStats() });
 
 let downloading = null;
+let hw = null; // характеристики компьютера: llama.cpp определяет видеокарту один раз
+async function models(c) {
+  hw ??= await core.detectHardware();
+  const r = core.recommend(hw);
+  if (!c.llm.localModel) { core.saveConfig({ llm: { localModel: r.model.id } }); c = core.loadConfig(); }
+  return { selected: core.selectLlm(c.llm.localModel), recommended: r.model.id, reason: r.reason, hw,
+    options: r.options.map(o => ({ id: o.model.id, tier: o.model.tier, title: o.model.title, vendor: o.model.vendor, note: o.model.note, size: o.model.file.size, ok: o.ok, why: o.why })) };
+}
 const methods = {
-  status() {
-    const c = core.loadConfig();
-    return { version: core.VERSION, missing: core.missing().map(f => f.path), packs: core.plan(), left: core.totalSize(core.missing()), downloading: !!downloading, config: c, templates: Object.values(core.TEMPLATES).map(t => ({ id: t.id, title: t.title })), net: core.netStats() };
+  async status() {
+    let c = core.loadConfig();
+    const llm = await models(c);
+    c = core.loadConfig();
+    return { llm, version: core.VERSION, missing: core.missing().map(f => f.path), packs: core.plan(), left: core.totalSize(core.missing()), downloading: !!downloading, config: c, templates: Object.values(core.TEMPLATES).map(t => ({ id: t.id, title: t.title })), net: core.netStats() };
   },
   async download() {
     if (downloading) return downloading; // повторный клик не запускает вторую загрузку
@@ -23,6 +33,13 @@ const methods = {
     return fn ? fn(cfg) : { ok: false, message: "Неизвестный сервис" };
   },
   saveConfig({ patch }) { return core.saveConfig(patch); },
+  /** Сменить локальную языковую модель; файлы другой модели не удаляются */
+  async setModel({ id }) {
+    if (downloading) throw new Error("Дождитесь окончания загрузки");
+    if (!core.LLM_MODELS.some(m => m.id === id)) throw new Error("Неизвестная модель");
+    core.saveConfig({ llm: { localModel: id } });
+    return methods.status();
+  },
   async transcribe({ file, micFile, speakers }) {
     const c = core.loadConfig();
     const tr = await core.transcribe(file, { micFile, speakers, glossary: core.parseGlossary(c.glossary), onProgress: progress });

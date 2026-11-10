@@ -70,6 +70,7 @@ async function init() {
   const opts = st.templates.map(t => `<option value="${esc(t.id)}">${esc(t.title)}</option>`).join("");
   $("#tpl").innerHTML = opts;
   $("#tpl-def").innerHTML = opts;
+  renderModels(st);
   $("#packs").innerHTML = st.packs.map(p => `<li><span>${esc(p.title)}<small> · лицензия ${esc(p.license)}</small></span><b>${p.missing ? size(p.size) : "✓ скачано"}</b></li>`).join("");
   $("#dl-total").textContent = st.left ? `осталось ${size(st.left)} из ≈ ${size(st.packs.reduce((a, p) => a + p.size, 0))}` : "всё скачано";
   setReady(!st.missing.length);
@@ -77,6 +78,31 @@ async function init() {
   listMics();
   recoverOrphans();
 }
+
+// ── Выбор языковой модели: лёгкая или мощная, рекомендация по компьютеру
+const TIER = { light: "Лёгкая", strong: "Мощная" };
+function renderModels(st) {
+  const m = st.llm;
+  const card = o => `<label class="model${o.id === m.selected ? " on" : ""}${o.ok ? "" : " no"}"><input type="radio" name="llm" value="${esc(o.id)}"${o.id === m.selected ? " checked" : ""}>
+    <span><b>${esc(TIER[o.tier])}: ${esc(o.title)}</b>${o.id === m.recommended ? ' <span class="status on">рекомендуем</span>' : ""}<small>${esc(o.vendor)} · ${size(o.size)} · ${esc(o.note)}</small>${o.ok ? "" : `<small class="err">${esc(o.why)}</small>`}</span></label>`;
+  $("#models-setup").innerHTML = `<p class="note">${esc(m.reason)} Модель можно сменить в настройках.</p>` + m.options.map(card).join("");
+  $("#llm-model").innerHTML = m.options.map(o => `<option value="${esc(o.id)}"${o.id === m.selected ? " selected" : ""}>${esc(TIER[o.tier])}: ${esc(o.title)}${o.id === m.recommended ? " — рекомендуем" : ""}${o.ok ? "" : " — не хватит памяти"}</option>`).join("");
+  $("#llm-why").textContent = m.reason;
+}
+async function changeModel(id) {
+  try {
+    const st = await pk.core("setModel", { id });
+    state.config = st.config;
+    renderModels(st);
+    $("#packs").innerHTML = st.packs.map(p => `<li><span>${esc(p.title)}<small> · лицензия ${esc(p.license)}</small></span><b>${p.missing ? size(p.size) : "✓ скачано"}</b></li>`).join("");
+    $("#dl-total").textContent = st.left ? `осталось ${size(st.left)}` : "всё скачано";
+    setReady(!st.missing.length);
+    if (st.missing.length) toast("Новую модель нужно скачать один раз — откройте «Скачать модели».", "info", 8000);
+    else toast("Модель выбрана.", "ok");
+  } catch (e) { toast(e.message, "err"); }
+}
+$("#models-setup").addEventListener("change", e => { if (e.target.name === "llm") changeModel(e.target.value); });
+$("#llm-model").addEventListener("change", e => changeModel(e.target.value));
 
 // ── Загрузка моделей: фоновая задача
 let dl = null;
@@ -108,7 +134,8 @@ $("#dl").addEventListener("click", startDownload);
 
 // ── Прогресс
 const STAGES = [["decode", "Чтение"], ["vad", "Поиск речи"], ["speakers", "Голоса"], ["asr", "Распознавание"], ["protocol", "Протокол"]];
-const FILE_NAMES = { "asr/encoder.int8.onnx": "распознавание речи", "asr/decoder.onnx": "распознавание речи", "asr/joiner.onnx": "распознавание речи", "asr/tokens.txt": "словарь распознавания", "vad/silero_vad.onnx": "поиск речи", "speaker/campplus.onnx": "голоса участников", "llm/qwen3-4b-instruct-2507-q4_k_m.gguf": "языковая модель для протокола" };
+const FILE_NAMES = { "asr/encoder.int8.onnx": "распознавание речи", "asr/decoder.onnx": "распознавание речи", "asr/joiner.onnx": "распознавание речи", "asr/tokens.txt": "словарь распознавания", "vad/silero_vad.onnx": "поиск речи", "speaker/campplus.onnx": "голоса участников", };
+const fileName = f => FILE_NAMES[f] ?? (f.startsWith("llm/") ? "языковая модель для протокола" : f);
 pk.on("progress", m => {
   if (m.stage === "download") {
     if (!dl) dl = { t0: Date.now(), from: null };
@@ -122,7 +149,7 @@ pk.on("progress", m => {
     $("#dlbar i").style.width = p * 100 + "%";
     $("#dlbar span").textContent = `${size(m.done)} из ${size(m.total)} · ${Math.floor(p * 100)}%`;
     $("#dl-info").classList.remove("err");
-    $("#dl-info").textContent = `Файл ${m.index + 1} из ${m.count}: ${FILE_NAMES[m.file] ?? m.file} (${size(m.fileDone)} из ${size(m.fileTotal)})${speed ? ` · ${size(speed)}/с · осталось ≈ ${fmt(eta)}` : ""}`;
+    $("#dl-info").textContent = `Файл ${m.index + 1} из ${m.count}: ${fileName(m.file)} (${size(m.fileDone)} из ${size(m.fileTotal)})${speed ? ` · ${size(speed)}/с · осталось ≈ ${fmt(eta)}` : ""}`;
     setJob("download", "Скачиваем модели", p, `${Math.floor(p * 100)}%${speed ? " · ≈ " + fmt(eta) : ""}`);
     return;
   }

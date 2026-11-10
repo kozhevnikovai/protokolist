@@ -28,7 +28,8 @@
   <section id="v-setup" hidden>
     <div class="kicker">Первый запуск</div>
     <h1>Скачать модели</h1>
-    <p class="lead">Один раз, <b id="dl-total">≈ 2,7 ГБ</b>. Дальше Протоколист работает без интернета: записи и тексты не покидают компьютер. Загрузку можно прервать — она продолжится с того же места.</p>
+    <p class="lead">Один раз, <b id="dl-total">≈ 3–7 ГБ</b>. Дальше Протоколист работает без интернета: записи и тексты не покидают компьютер. Загрузку можно прервать — она продолжится с того же места.</p>
+    <div class="models" id="models-setup"></div>
     <ul id="packs" class="plain packs"></ul>
     <button class="primary" id="dl">Скачать</button>
     <div id="dl-box" hidden>
@@ -185,6 +186,8 @@
     <p class="note">Ключи хранятся на этом компьютере в зашифрованном виде (средствами Windows или macOS) и не показываются после сохранения.</p>
     <h2><span class="n">05</span>Модель для протокола</h2>
     <div class="grid2">
+      <label>Модель на компьютере<select id="llm-model"></select></label>
+      <p class="note" id="llm-why"></p>
       <label>Где работает<select data-k="llm.provider"><option value="local">На этом компьютере (по умолчанию)</option><option value="openai">Облако: OpenAI-совместимый API</option></select></label>
       <label>Ускорение<select data-k="llm.gpu"><option value="auto">Авто (видеокарта, если есть)</option><option value="cpu">Только процессор</option><option value="vulkan">Vulkan</option><option value="cuda">CUDA (NVIDIA)</option></select></label>
       <label>Облако: адрес API<input data-k="llm.baseUrl" placeholder="https://llm.api.cloud.yandex.net/v1"></label>

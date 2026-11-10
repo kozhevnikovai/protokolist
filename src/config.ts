@@ -4,7 +4,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bitrix24Config, TelegramConfig, YouGileConfig } from "./integrations/index.js";
-import { homeDir } from "./models.js";
+import { homeDir, selectLlm } from "./models.js";
 import type { LLMOptions } from "./protocol/llm.js";
 
 export interface Config {
@@ -70,6 +70,7 @@ function resolveSecrets(c: Config): Config {
 export function loadConfig(): Config {
   try {
     const c = existsSync(file()) ? JSON.parse(readFileSync(file(), "utf8")) : {};
+    selectLlm(c.llm?.localModel); // от выбранной модели зависят «каких файлов не хватает» и загрузка
     return resolveSecrets({ ...DEFAULTS, ...c, llm: { ...DEFAULTS.llm, ...c.llm }, gost: { ...c.gost }, bitrix24: c.bitrix24 && { ...c.bitrix24 }, yougile: c.yougile && { ...c.yougile }, telegram: c.telegram && { ...c.telegram }, outputDir: c.outputDir || process.env.PROTOKOLIST_OUT || defaultOutputDir() });
   } catch { return { ...DEFAULTS, outputDir: process.env.PROTOKOLIST_OUT || defaultOutputDir() }; }
 }

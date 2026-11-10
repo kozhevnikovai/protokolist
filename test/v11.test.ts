@@ -147,3 +147,13 @@ describe("словарь: устойчивость", () => {
     expect(parseGlossary("а".repeat(5000))).toHaveLength(0);
   });
 });
+
+describe("выбор языковой модели", () => {
+  it("модель из каталога меняет файлы для загрузки, неизвестная — мощная по умолчанию", async () => {
+    const { selectLlm } = await import("../src/models.js");
+    expect(selectLlm("qwen3.5-4b")).toBe("qwen3.5-4b");
+    expect(PACKS.llm.files[0].path).toBe("llm/Qwen3.5-4B-Q4_K_M.gguf");
+    expect(selectLlm("../evil")).toBe("gigachat-3.1-lightning");
+    expect(PACKS.llm.files[0].path).toContain("GigaChat3.1");
+  });
+});
