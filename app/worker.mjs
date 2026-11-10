@@ -1,6 +1,6 @@
 // Фоновый процесс: распознавание и протокол не тормозят окно. Методы вызываются из главного процесса.
 import * as core from "../dist/index.js";
-import { listMeetings, load, searchMeetings, hitLine } from "../dist/archive.js";
+import { listMeetings, listTasks, load, searchMeetings, hitLine } from "../dist/archive.js";
 
 const port = process.parentPort;
 const progress = (stage, done, total) => port.postMessage({ type: "progress", stage, done, total });
@@ -46,6 +46,7 @@ const methods = {
     return out;
   },
   list() { return listMeetings(core.loadConfig().outputDir); },
+  tasks() { return listTasks(core.loadConfig().outputDir); },
   search({ query }) { return searchMeetings(core.loadConfig().outputDir, query).map(h => ({ ...h, line: hitLine(h) })); },
 };
 

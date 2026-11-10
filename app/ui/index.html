@@ -14,7 +14,8 @@
     <button data-view="record" class="on"><span class="mono">01</span>Запись</button>
     <button data-view="file"><span class="mono">02</span>Файл</button>
     <button data-view="archive"><span class="mono">03</span>Встречи</button>
-    <button data-view="settings"><span class="mono">04</span>Настройки</button>
+    <button data-view="tasks"><span class="mono">04</span>Задачи</button>
+    <button data-view="settings"><span class="mono">05</span>Настройки</button>
   </nav>
   <!-- Фоновая задача (загрузка моделей, обработка): видна из любой вкладки -->
   <button class="job" id="job" hidden><b id="job-t"></b><span class="bar thin"><i></i></span><small id="job-s"></small></button>
@@ -110,6 +111,14 @@
     <table class="list" id="meetings"></table>
   </section>
 
+  <section id="v-tasks" hidden>
+    <div class="kicker">Из всех протоколов</div>
+    <h1>Задачи</h1>
+    <p class="lead">Что поручили на встречах: ответственный, срок и откуда задача. Нажмите на строку, чтобы открыть протокол.</p>
+    <div class="tile-row"><div>Всего задач<b id="t-all">0</b></div><div>Срок на этой неделе<b id="t-week">0</b></div><div>Проверить по записи<b id="t-review">0</b></div></div>
+    <label class="check small"><input type="checkbox" id="t-mine"> Только задачи без ответственного или срока</label>
+    <table class="tasks list" id="t-table"></table>
+  </section>
   <section id="v-settings" hidden>
     <div class="kicker">Настройки</div>
     <h1>Настройки</h1>

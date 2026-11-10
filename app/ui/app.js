@@ -24,6 +24,7 @@ function show(view) {
   $$("main > section").forEach(s => (s.hidden = s.id !== "v-" + view));
   $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
   if (view === "archive") loadArchive();
+  if (view === "tasks") loadTasks();
   if (view === "settings") fillSettings();
   if (view !== "record") stopMicTest();
 }
@@ -443,6 +444,26 @@ $("#q").addEventListener("input", e => {
     $$(".hit").forEach(el => el.addEventListener("click", () => pk.open(el.dataset.file)));
   }, 250);
 });
+
+// ── Задачи из всех протоколов
+let allTasks = [];
+async function loadTasks() {
+  try { allTasks = await pk.core("tasks"); } catch (e) { toast("Не удалось прочитать протоколы: " + e.message, "err"); allTasks = []; }
+  renderTasks();
+}
+function renderTasks() {
+  const today = new Date().toISOString().slice(0, 10), week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const list = $("#t-mine").checked ? allTasks.filter(t => !t.owner || !t.due) : allTasks;
+  $("#t-all").textContent = allTasks.length;
+  $("#t-week").textContent = allTasks.filter(t => t.due && t.due >= today && t.due <= week).length;
+  $("#t-review").textContent = allTasks.filter(t => t.review).length;
+  $("#t-table").innerHTML = list.length ? `<tr><th>Задача</th><th>Ответственный</th><th>Срок</th><th>Встреча</th></tr>${list.slice(0, 500).map(t => {
+    const cls = t.due && t.due < today ? "overdue" : t.due && t.due <= week ? "due-soon" : "";
+    return `<tr data-file="${esc(t.file)}"><td>${esc(t.text)}${t.review ? '<div class="review">● проверить по записи</div>' : ""}</td><td>${esc(t.owner || "—")}</td><td class="${cls}">${t.due ? ruDate(t.due) : esc(t.dueText || "—")}</td><td>${esc(t.meeting)}<br><span class="note">${ruDate(t.date)}</span></td></tr>`;
+  }).join("")}` : `<tr><td>Задач пока нет — они появятся после первого протокола.</td></tr>`;
+  $$("#t-table tr[data-file]").forEach(tr => tr.addEventListener("click", () => pk.open(tr.dataset.file)));
+}
+$("#t-mine").addEventListener("change", renderTasks);
 
 // ── Настройки
 const get = (o, k) => k.split(".").reduce((a, x) => a?.[x], o);
