@@ -4,7 +4,7 @@
 @font-face{font-family:Geologica;font-weight:600;src:url(../../node_modules/@fontsource/geologica/files/geologica-cyrillic-600-normal.woff2) format("woff2");unicode-range:U+0400-045F,U+2116}
 @font-face{font-family:Geologica;font-weight:600;src:url(../../node_modules/@fontsource/geologica/files/geologica-latin-600-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC}
 @font-face{font-family:"Martian Mono";src:url(../../node_modules/@fontsource/martian-mono/files/martian-mono-latin-400-normal.woff2) format("woff2")}
-:root{--bg:#FBFBFA;--side:#F3F3F1;--card:#fff;--ink:#1A1A19;--pencil:#5C5C57;--mute:#8A8A84;--line:#E8E8E5;--plate:#F1F1EE;--acc:#D9481A;--acc-h:#B93A12;--ok:#1F7A4A;--okbg:#E7F3EC;--warn:#9A5B00;--warnbg:#FFF3DF;--bad:#B3261E;--badbg:#FCE9E7;--r:12px;--sigt:#B3261E;--sig:#D9481A;--axis:#D6D6D2}
+:root{--bg:#FBFBFA;--side:#F3F3F1;--card:#fff;--ink:#1A1A19;--pencil:#5C5C57;--mute:#6B6B66;--line:#E8E8E5;--plate:#F1F1EE;--acc:#C2410C;--acc-h:#9F3409;--ok:#1F7A4A;--okbg:#E7F3EC;--warn:#9A5B00;--warnbg:#FFF3DF;--bad:#B3261E;--badbg:#FCE9E7;--r:12px;--sigt:#B3261E;--sig:#C2410C;--axis:#D6D6D2}
 *{box-sizing:border-box}html,body{height:100%}
 body{margin:0;display:grid;grid-template-columns:232px 1fr;font:15px/1.55 Geologica,"Segoe UI",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
 .mono{font-variant-numeric:tabular-nums}
@@ -67,3 +67,11 @@ button.link{all:unset;cursor:pointer;color:var(--pencil);font-size:13px;text-dec
 .tile-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.tile-row div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:12px;color:var(--pencil)}.tile-row b{display:block;font-size:24px;font-weight:600;color:var(--ink)}
 @media (max-width:820px){body{grid-template-columns:1fr}aside{flex-direction:row;flex-wrap:wrap;align-items:center}nav{flex-direction:row;flex-wrap:wrap}.net{display:none}main{padding:24px}.grid2,.tile-row{grid-template-columns:1fr}}
 [hidden]{display:none!important}
+.pill{font-style:normal;font-size:10px;font-weight:600;color:#9F3409;background:#FBE5DC;border-radius:999px;padding:1px 6px;margin-left:auto}
+nav button .pill{display:inline}
+.cards.soon .card{background:#FCFCFB}.cards.soon .status{color:#9F3409;background:#FBE5DC}
+button.card.as-link{all:unset;box-sizing:border-box;cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;display:block}button.card.as-link:hover{border-color:var(--acc)}button.card.as-link:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.rec-row{margin:0 0 18px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+button{white-space:nowrap}
+.cards{margin-top:16px}.card h3{gap:8px}.card h3 .status{flex:none}
+.mic-test{margin:0 0 8px}

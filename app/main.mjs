@@ -3,7 +3,7 @@ import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Notification, pow
 import { execFile } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -86,7 +86,20 @@ function createWindow() {
   });
   win.loadFile(join(here, "ui", "index.html"));
   // ссылки из протоколов открываем в браузере, а не в окне приложения
-  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: "deny" }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { openUrl(url); return { action: "deny" }; });
+  // окно показывает только свой интерфейс: переход на любой другой адрес запрещён
+  win.webContents.on("will-navigate", e => e.preventDefault());
+}
+/** Наружу — только https-ссылки (не file:, не служебные схемы Windows) */
+function openUrl(u) { if (typeof u === "string" && /^https:\/\//i.test(u)) shell.openExternal(u); }
+/** Открываем только папки и документы: исполняемый файл из папки протоколов не запустится */
+const OPENABLE = new Set([".html", ".docx", ".md", ".json", ".txt", ".srt", ".ics", ".pdf", ".webm", ".ogg", ".opus", ".mp3", ".wav", ".m4a", ".mp4"]);
+function openPath(p) {
+  try {
+    if (typeof p !== "string" || !existsSync(p)) return "Файл не найден";
+    if (statSync(p).isDirectory() || OPENABLE.has(extname(p).toLowerCase())) return shell.openPath(p);
+    return "Этот тип файла приложение не открывает";
+  } catch (e) { return e.message; }
 }
 
 // Звук встречи: системный «loopback» (Windows; macOS 14.2+ — через CoreAudio). Видео не пишем.
@@ -94,7 +107,8 @@ function grantLoopback() {
   session.defaultSession.setDisplayMediaRequestHandler((_req, cb) => {
     desktopCapturer.getSources({ types: ["screen"] }).then(s => cb({ video: s[0], audio: "loopback" })).catch(() => cb({}));
   });
-  session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(["media", "display-capture", "notifications"].includes(perm)));
+  // микрофон и звук компьютера — только своему окну
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(wc === win?.webContents && wc.getURL().startsWith("file:") && ["media", "display-capture", "notifications"].includes(perm)));
 }
 
 // Автостарт: Windows отмечает в реестре приложения, которые сейчас держат микрофон
@@ -181,8 +195,8 @@ ipcMain.handle("pick-file", async () => {
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle("pick-dir", async () => { const r = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"] }); return r.canceled ? null : r.filePaths[0]; });
-ipcMain.handle("open", (_e, p) => shell.openPath(p));
-ipcMain.handle("open-url", (_e, u) => shell.openExternal(u));
+ipcMain.handle("open", (_e, p) => openPath(p));
+ipcMain.handle("open-url", (_e, u) => openUrl(u));
 ipcMain.handle("platform", () => process.platform);
 
 // старые временные записи v1.0 из %TEMP%

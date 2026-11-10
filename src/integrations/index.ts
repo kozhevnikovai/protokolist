@@ -94,7 +94,9 @@ export async function sendToTelegram(p: Protocol, c: TelegramConfig, files: { na
   if (p.decisions.length) lines.push("", "<b>Решения</b>", ...p.decisions.map((d, i) => `${i + 1}. ${esc(d.text)}`));
   if (p.tasks.length) lines.push("", "<b>Задачи</b>", ...p.tasks.map(t => `• ${esc(t.text)} — ${esc(t.owner || "?")}${t.due ? `, до ${t.due.split("-").reverse().join(".")}` : t.dueText ? `, ${esc(t.dueText)}` : ""}`));
   const res: SendResult = { target: "Telegram", ok: 0, failed: [], links: [] };
-  const text = lines.join("\n").slice(0, 4000);
+  // Telegram принимает до 4096 знаков; режем по строкам, чтобы не разорвать тег или «&amp;»
+  let text = "";
+  for (const l of lines) { if (text.length + l.length + 1 > 3900) { text += "\n…"; break; } text += (text ? "\n" : "") + l; }
   try {
     const r = await netFetch("integration", `${api}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: c.chatId, text, parse_mode: "HTML" }) });
     const j: any = await r.json();

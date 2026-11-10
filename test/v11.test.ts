@@ -138,3 +138,12 @@ describe("словарь: варианты через запятую", () => {
     expect(applyGlossary("Ставим в битрикс двадцать четыре, считаем кей пи ай.", g)).toBe("Ставим в Битрикс24, считаем KPI.");
   });
 });
+
+describe("словарь: устойчивость", () => {
+  it("«$» в термине не ломает текст, словарь ограничен по размеру", async () => {
+    const { parseGlossary, applyGlossary, MAX_TERMS } = await import("../src/glossary.js");
+    expect(applyGlossary("план на сто баксов", parseGlossary("$100 = сто баксов"))).toBe("план на $100");
+    expect(parseGlossary(Array.from({ length: 1000 }, (_, i) => `Т${i}`).join("\n"))).toHaveLength(MAX_TERMS);
+    expect(parseGlossary("а".repeat(5000))).toHaveLength(0);
+  });
+});

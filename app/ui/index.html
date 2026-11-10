@@ -16,6 +16,7 @@
     <button data-view="archive"><span class="mono">03</span>Встречи</button>
     <button data-view="tasks"><span class="mono">04</span>Задачи</button>
     <button data-view="settings"><span class="mono">05</span>Настройки</button>
+    <button data-view="soon"><span class="mono">06</span>Скоро <i class="pill">Pro</i></button>
   </nav>
   <!-- Фоновая задача (загрузка моделей, обработка): видна из любой вкладки -->
   <button class="job" id="job" hidden><b id="job-t"></b><span class="bar thin"><i></i></span><small id="job-s"></small></button>
@@ -43,6 +44,7 @@
     <p class="lead">Пишем микрофон и звук компьютера в две дорожки: ваш голос подписывается «Я» без ошибок, остальные участники разделяются автоматически.</p>
     <div class="gate" id="gate" hidden>Чтобы записывать и расшифровывать, сначала скачайте модели. <button class="primary" data-go="setup">Скачать модели</button></div>
     <div class="panel">
+      <div class="row rec-row"><button class="primary big" id="rec">● Начать запись</button><span class="mono timer" id="timer">00:00</span></div>
       <label class="check"><input type="checkbox" id="rec-sys" checked> Звук встречи с компьютера (онлайн-звонок)</label>
       <label class="check"><input type="checkbox" id="rec-mic" checked> Мой микрофон</label>
       <div class="grid2 mic-row">
@@ -52,7 +54,6 @@
       <label class="check small"><input type="checkbox" id="mic-ns"> Шумоподавление микрофона (включайте, если вокруг шумно; на гарнитуре может «съедать» тихие слова)</label>
       <div class="meters"><div><span>Микрофон</span><b id="m-mic"><i></i></b></div><div><span>Встреча</span><b id="m-sys"><i></i></b></div></div>
       <p class="note err" id="mic-warn" hidden></p>
-      <div class="row"><button class="primary big" id="rec">● Начать запись</button><span class="mono timer" id="timer">00:00</span></div>
       <details class="consent"><summary>Предупредите участников о записи — текст для чата</summary>
         <p id="consent-text">Коллеги, я записываю встречу для протокола. Запись и расшифровка обрабатываются только на моём компьютере и никуда не передаются. Если кто-то против — скажите, пожалуйста.</p>
         <button class="ghost" id="copy-consent">Скопировать</button></details>
@@ -95,7 +96,7 @@
     <div id="r-tasks"></div>
     <div class="row wrap">
       <button class="primary" id="r-open">Открыть протокол</button>
-      <button class="ghost" id="r-folder">Папка</button>
+      <button class="ghost" id="r-copy">Скопировать итоги для чата</button><button class="ghost" id="r-folder">Папка</button>
       <button class="ghost" id="r-b24" hidden>→ Битрикс24</button>
       <button class="ghost" id="r-yg" hidden>→ YouGile</button>
       <button class="ghost" id="r-tg" hidden>→ Telegram</button>
@@ -192,6 +193,26 @@
     </div>
     <p class="note">Облачная модель получает текст стенограммы. Для 152-ФЗ выбирайте провайдера с серверами в России и предупреждайте участников.</p>
     <div class="row"><button class="primary" id="save">Сохранить</button><span class="mono" id="saved"></span></div>
+  </section>
+<section id="v-soon" hidden>
+    <div class="kicker">Планы</div>
+    <h1>Скоро: Протоколист для команды</h1>
+    <p class="lead">Всё, что есть сейчас, остаётся бесплатным и открытым (MIT). Платная версия добавит то, что нужно отделу и компании. Этих возможностей пока нет — мы над ними работаем.</p>
+    <div class="cards soon">
+      <div class="card"><h3>Общий архив команды <span class="status">скоро</span></h3><p>Протоколы всех сотрудников в одном месте, поиск «что решили про бюджет» по всей компании, права доступа.</p></div>
+      <div class="card"><h3>Контроль поручений <span class="status">скоро</span></h3><p>Статусы задач, напоминания о сроках в Telegram, сводка «что не сделано с прошлой планёрки».</p></div>
+      <div class="card"><h3>Серии встреч <span class="status">скоро</span></h3><p>Еженедельные планёрки и 1:1 связываются в цепочку: что изменилось, какие вопросы тянутся месяцами.</p></div>
+      <div class="card"><h3>Знакомые голоса <span class="status">скоро</span></h3><p>Участники подписываются сами: один раз назвали — дальше Протоколист узнаёт по голосу.</p></div>
+      <div class="card"><h3>Больше подключений <span class="status">скоро</span></h3><p>amoCRM, Kaiten, Яндекс Трекер, календарь: задачи и итоги встречи сразу там, где работает команда.</p></div>
+      <div class="card"><h3>Точнее и быстрее <span class="status">скоро</span></h3><p>Ускорение на видеокарте, усиленная модель для сложных записей, субтитры во время встречи.</p></div>
+    </div>
+    <div class="row wrap"><button class="primary" id="soon-want">Хочу ранний доступ</button><span class="note">Откроется страница на GitHub: напишите, что вам важнее, — это влияет на порядок разработки.</span></div>
+    <h2>Другие инструменты kozhevnikovai</h2>
+    <div class="cards">
+      <button class="card as-link" data-url="https://github.com/kozhevnikovai/tender-pomoshnik"><h3>Тендерный помощник</h3><p>Разбор госзакупок 44-ФЗ и 223-ФЗ с цитатами и ссылками на закон.</p></button>
+      <button class="card as-link" data-url="https://github.com/kozhevnikovai/site-audit-ru"><h3>site-audit-ru</h3><p>Аудит сайта и конкурентов: SEO, путь к заявке, 152-ФЗ.</p></button>
+      <button class="card as-link" data-url="https://github.com/kozhevnikovai/ai-skills-ru-business"><h3>Навыки для Claude</h3><p>КП, ответы на отзывы, вакансии, регламенты — в том числе «встреча → задачи».</p></button>
+    </div>
   </section>
 </main>
 <div id="toasts"></div>

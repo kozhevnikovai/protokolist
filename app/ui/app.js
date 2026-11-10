@@ -261,6 +261,7 @@ async function startRec() {
     if (heard && quiet < 16) $("#mic-warn").hidden = true;
   }, 500);
   rec = { recorders, tracks, stops, timer, t0, files, writes };
+  toast("Запись идёт. Предупредите участников — текст для чата есть ниже на этом экране.", "info", 7000);
   starting = false;
   pk.setState({ recording: true });
   $("#rec").disabled = false;
@@ -383,7 +384,7 @@ function fail(e) {
   $("#r-title").textContent = "Не получилось";
   $("#r-summary").textContent = e.message.replace(/^Error invoking remote method 'core': (Error: )?/, "");
   $("#r-stats").innerHTML = $("#r-tasks").innerHTML = "";
-  $$("#r-open, #r-folder, #r-b24, #r-yg, #r-tg").forEach(b => (b.hidden = true));
+  $$("#r-open, #r-copy, #r-folder, #r-b24, #r-yg, #r-tg").forEach(b => (b.hidden = true));
   $("#r-note").textContent = state.recFiles.length ? "Запись сохранена — её можно расшифровать заново на вкладке «Запись». " : "";
   $("#r-note").textContent += "Если ошибка повторяется — сообщите на github.com/kozhevnikovai/protokolist/issues (без записи с личными данными).";
 }
@@ -403,12 +404,27 @@ function showResult(r) {
   const c = state.config, set = c.secretsSet ?? {};
   const can = !c.offline && !!p?.tasks.length;
   $("#r-open").hidden = $("#r-folder").hidden = false;
+  $("#r-copy").hidden = !p;
   $("#r-b24").hidden = !(can && set["bitrix24.webhook"]);
   $("#r-yg").hidden = !(can && set["yougile.key"]);
   $("#r-tg").hidden = !(!c.offline && p && set["telegram.token"]);
   $("#r-note").classList.remove("err");
   $("#r-note").textContent = c.offline && (set["bitrix24.webhook"] || set["yougile.key"] || set["telegram.token"]) ? "Подключения настроены, но включён строгий офлайн — выключите его в настройках, чтобы отправлять задачи." : "";
 }
+// Итоги встречи одним сообщением — для рабочего чата или письма участникам
+function followUp(p) {
+  const d = t => (t.due ? ` — до ${ruDate(t.due)}` : t.dueText ? ` — ${t.dueText}` : "");
+  return [`Итоги встречи «${p.title}» (${ruDate(p.date)})`, "", p.summary,
+    p.decisions.length ? "\nРешили:\n" + p.decisions.map((x, i) => `${i + 1}. ${x.text}`).join("\n") : "",
+    p.tasks.length ? "\nЗадачи:\n" + p.tasks.map(t => `• ${t.owner || "ответственный не назван"}: ${t.text}${d(t)}`).join("\n") : "",
+    p.openQuestions?.length ? "\nОткрытые вопросы:\n" + p.openQuestions.map(q => `• ${q.text ?? q}`).join("\n") : "",
+    "\nЕсли что-то записано неточно — поправьте, пожалуйста."].filter(x => x !== "").join("\n");
+}
+$("#r-copy").addEventListener("click", async () => {
+  if (!state.result?.protocol) return;
+  try { await navigator.clipboard.writeText(followUp(state.result.protocol)); toast("Итоги скопированы — вставьте в чат или письмо", "ok", 3000); }
+  catch { toast("Не удалось скопировать", "err"); }
+});
 const htmlFile = () => state.result.files.find(f => f.endsWith(".html")) ?? state.result.dir;
 $("#r-open").addEventListener("click", () => pk.open(htmlFile()));
 $("#r-folder").addEventListener("click", () => pk.open(state.result.dir));
@@ -464,6 +480,10 @@ function renderTasks() {
   $$("#t-table tr[data-file]").forEach(tr => tr.addEventListener("click", () => pk.open(tr.dataset.file)));
 }
 $("#t-mine").addEventListener("change", renderTasks);
+
+// ── «Скоро» и другие продукты: ссылки открываются в браузере
+$("#soon-want").addEventListener("click", () => pk.openUrl("https://github.com/kozhevnikovai/protokolist/issues/new?template=early-access.yml"));
+$$(".as-link").forEach(b => b.addEventListener("click", () => pk.openUrl(b.dataset.url)));
 
 // ── Настройки
 const get = (o, k) => k.split(".").reduce((a, x) => a?.[x], o);
