@@ -3,5 +3,5 @@
 useDefault = true
 
 [allowlist]
-description = "Не секреты: сочетание клавиш записи"
-regexes = ['''CommandOrControl\+Alt\+R''']
+description = "Не секреты: сочетание клавиш записи, ключи кэша GitHub Actions"
+regexes = ['''CommandOrControl\+Alt\+R''', '''key: llm-[a-z0-9.-]+''']
