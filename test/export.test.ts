@@ -26,7 +26,8 @@ describe("форматы", () => {
     expect(h).toContain("font/woff2;base64");
     expect(h).toContain('data-t="69.8"');
     expect(h).toContain("0 байт в сеть");
-    expect(h).toContain("<b>№ 003</b>");
+    expect(h).toContain("решений</span>");
+    expect(h).not.toContain("Martian");
     expect(h).not.toMatch(/https?:\/\/(fonts|cdn)/);
   });
   it("HTML честно помечает облачную модель", () => expect(toHtml(m, { sentBytes: 100 })).toContain("облачной моделью"));

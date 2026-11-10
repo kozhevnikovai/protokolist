@@ -54,7 +54,7 @@ export function buildServer(): McpServer {
   const item = z.object({ text: z.string(), quote: z.string().describe("Дословная цитата 5–15 слов из стенограммы") });
   server.registerTool("save_protocol", {
     title: "Сохранить протокол",
-    description: `Проверяет протокол по стенограмме (находит цитаты и тайм-коды, вычисляет даты сроков) и сохраняет HTML («Чертёж»), DOCX и Markdown в папку встречи. Шаблоны: ${Object.values(TEMPLATES).map(t => `${t.id} — ${t.title}`).join("; ")}.`,
+    description: `Проверяет протокол по стенограмме (находит цитаты и тайм-коды, вычисляет даты сроков) и сохраняет HTML, DOCX и Markdown в папку встречи. Шаблоны: ${Object.values(TEMPLATES).map(t => `${t.id} — ${t.title}`).join("; ")}.`,
     inputSchema: {
       id: z.string().describe("id встречи из transcribe_meeting"),
       template: z.enum(Object.keys(TEMPLATES) as [string, ...string[]]).default("planerka"),
