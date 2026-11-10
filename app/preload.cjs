@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("pk", {
   open: p => ipcRenderer.invoke("open", p),
   openUrl: u => ipcRenderer.invoke("open-url", u),
   platform: () => ipcRenderer.invoke("platform"),
+  hotkey: () => ipcRenderer.invoke("hotkey"),
   pathOf: file => webUtils.getPathForFile(file),
   on: (ch, fn) => { if (["progress", "net", "meeting"].includes(ch)) ipcRenderer.on(ch, (_e, m) => fn(m)); },
 });

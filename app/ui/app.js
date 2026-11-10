@@ -292,6 +292,10 @@ async function stopRec() {
   process(r.files.sys ?? r.files.mic, r.files.sys ? r.files.mic : undefined, Object.values(r.files));
 }
 
+// Трей, индикатор поверх окон и горячая клавиша вызывают то же, что и кнопка в окне
+window.__pkToggle = () => { if (rec) return stopRec(); show("record"); return startRec(); };
+pk.hotkey().then(k => { if (k) $("#hotkey-hint").textContent = `или ${k} из любого окна`; }).catch(() => {});
+
 // Незаконченные записи после сбоя или закрытия окна
 async function recoverOrphans() {
   const list = await pk.recOrphans();

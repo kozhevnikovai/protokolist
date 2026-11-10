@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'">
+<title>Идёт запись</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: Geologica, "Segoe UI", system-ui, sans-serif; }
+  .bar { -webkit-app-region: drag; user-select: none; box-sizing: border-box; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px;
+    background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); color: #1A1A19; font-size: 14px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #C2410C; animation: blink 1.2s steps(2, start) infinite; flex: none; }
+  @keyframes blink { to { visibility: hidden; } }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+  .t { font-variant-numeric: tabular-nums; color: #5C5C57; }
+  .grow { flex: 1; }
+  button { -webkit-app-region: no-drag; font: inherit; font-size: 13px; border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; background: #C2410C; color: #fff; }
+  button:focus-visible { outline: 2px solid #1A1A19; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="bar" role="status" aria-live="polite">
+  <span class="dot" aria-hidden="true"></span>
+  <span>Идёт запись</span><span class="t" id="t">00:00</span>
+  <span class="grow"></span>
+  <button id="stop" title="Остановить и расшифровать">■ Стоп</button>
+</div>
+<script src="indicator.js"></script>
+</body>
+</html>

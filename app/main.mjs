@@ -1,5 +1,6 @@
 // Протоколист — настольное приложение (Electron). Главный процесс: окно, запись звука, фоновый обработчик.
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Notification, powerSaveBlocker, safeStorage, session, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerSaveBlocker, safeStorage, screen, session, shell, Tray, utilityProcess } from "electron";
+import { fmtElapsed, HOTKEY, hotkeyLabel, indicatorBounds, isCommand, nextState, toggleAction, trayItems, trayTooltip } from "./recctl.mjs";
 import { execFile } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -135,10 +136,14 @@ function watchMeetings() {
   }), 10_000);
 }
 
-let appState = { recording: false, busy: false };
+let appState = { recording: false, busy: false, since: null };
 let sleepBlock = null;
-ipcMain.handle("state", (_e, st) => {
-  appState = { ...appState, ...st };
+ipcMain.handle("state", (e, st) => {
+  if (e.sender !== win?.webContents) return;
+  const was = appState.recording;
+  appState = nextState(appState, st);
+  if (was !== appState.recording) onRecordingChanged();
+  updateTray();
   // во время записи не даём системе уснуть — иначе звук обрывается
   if (appState.recording && sleepBlock === null) sleepBlock = powerSaveBlocker.start("prevent-app-suspension");
   if (!appState.recording && sleepBlock !== null) { powerSaveBlocker.stop(sleepBlock); sleepBlock = null; }
@@ -202,7 +207,79 @@ ipcMain.handle("platform", () => process.platform);
 // старые временные записи v1.0 из %TEMP%
 function cleanTemp() { try { rmSync(join(tmpdir(), "protokolist-rec"), { recursive: true, force: true }); } catch { /* занято */ } }
 
-app.whenReady().then(() => { if (!gotLock) return; migrateSecrets(); cleanTemp(); grantLoopback(); createWindow(); watchMeetings(); if (process.env.PROTOKOLIST_SMOKE) smoke(process.env.PROTOKOLIST_SMOKE); });
+// ── Заметность записи: трей, индикатор поверх окон, значок на панели задач, горячая клавиша
+let tray = null, indicator = null, tick = null, hotkeyOk = false;
+const img = n => nativeImage.createFromPath(join(here, "ui", n));
+/** Старт/стоп записи из трея, индикатора или по горячей клавише — как будто нажали кнопку в окне */
+function toggleRecording() {
+  if (!win) return;
+  const act = toggleAction(appState);
+  if (act === "none") { win.show(); win.focus(); return; }
+  // userGesture=true: захват звука компьютера требует действия пользователя
+  win.webContents.executeJavaScript("window.__pkToggle && window.__pkToggle()", true).catch(() => {});
+  if (act === "start" && win.isMinimized()) win.restore();
+}
+function runCommand(c) {
+  if (!isCommand(c)) return;
+  if (c === "toggle") toggleRecording();
+  if (c === "show" && win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+}
+function updateTray() {
+  if (!tray) return;
+  tray.setImage(img(appState.recording ? "tray-rec.png" : "tray.png"));
+  tray.setToolTip(trayTooltip(appState));
+  tray.setContextMenu(Menu.buildFromTemplate(trayItems(appState, process.platform).map(i => ({ label: i.label, enabled: i.enabled, click: () => (i.id === "quit" ? app.quit() : runCommand(i.id)) }))));
+}
+function createTray() {
+  try {
+    tray = new Tray(img("tray.png"));
+    tray.on("click", () => runCommand("show"));
+    updateTray();
+  } catch { tray = null; /* в системе нет области уведомлений — индикатор и окно всё равно покажут запись */ }
+}
+function showIndicator() {
+  if (indicator && !indicator.isDestroyed()) return indicator.showInactive();
+  indicator = new BrowserWindow({
+    ...indicatorBounds(screen.getPrimaryDisplay().workArea),
+    frame: false, transparent: true, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    skipTaskbar: true, focusable: false, alwaysOnTop: true, show: false, hasShadow: false, title: "Идёт запись",
+    webPreferences: { preload: join(here, "indicator-preload.cjs"), contextIsolation: true, sandbox: true },
+  });
+  indicator.setAlwaysOnTop(true, "screen-saver");
+  indicator.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  indicator.webContents.on("will-navigate", ev => ev.preventDefault());
+  indicator.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  indicator.loadFile(join(here, "ui", "indicator.html"));
+  indicator.once("ready-to-show", () => indicator?.showInactive());
+  indicator.on("closed", () => { indicator = null; });
+}
+function onRecordingChanged() {
+  clearInterval(tick);
+  if (appState.recording) {
+    showIndicator();
+    if (process.platform === "win32") win?.setOverlayIcon(img("rec-dot.png"), "Идёт запись");
+    if (process.platform === "darwin") app.dock?.setBadge("●");
+    tick = setInterval(() => {
+      const text = fmtElapsed(Date.now() - (appState.since ?? Date.now()));
+      if (indicator && !indicator.isDestroyed()) indicator.webContents.send("indicator-tick", text);
+      tray?.setToolTip(trayTooltip(appState));
+    }, 1000);
+  } else {
+    if (indicator && !indicator.isDestroyed()) indicator.destroy();
+    indicator = null;
+    if (process.platform === "win32") win?.setOverlayIcon(null, "");
+    if (process.platform === "darwin") app.dock?.setBadge("");
+  }
+}
+// команды индикатора принимаем только от самого индикатора
+ipcMain.on("indicator-command", (e, c) => { if (indicator && e.sender === indicator.webContents) runCommand(c); });
+ipcMain.handle("hotkey", () => (hotkeyOk ? hotkeyLabel(process.platform) : ""));
+function registerHotkey() {
+  try { hotkeyOk = globalShortcut.register(HOTKEY, toggleRecording); } catch { hotkeyOk = false; }
+}
+app.on("will-quit", () => { globalShortcut.unregisterAll(); clearInterval(tick); });
+
+app.whenReady().then(() => { if (!gotLock) return; migrateSecrets(); cleanTemp(); grantLoopback(); createWindow(); createTray(); registerHotkey(); watchMeetings(); if (process.env.PROTOKOLIST_SMOKE) smoke(process.env.PROTOKOLIST_SMOKE); });
 
 // Самопроверка собранного приложения (CI): обработчик, модели, распознавание файла, скриншот окна
 async function smoke(file) {
