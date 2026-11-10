@@ -14,6 +14,7 @@ Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meeti
 - **Every action item is backed by a quote and a timecode** — click to play the recording from that moment. Items the model couldn't ground in the transcript are flagged "verify" instead of being presented as fact.
 - **"Me" is never confused**: microphone and meeting audio are recorded as separate tracks; other participants are separated by voice; speaker echo is filtered.
 - **Spoken deadlines become dates** ("by Friday", "in two weeks") and go to calendar (.ics), Bitrix24 and YouGile.
+- **Recording is always visible**: a tray icon and an always-on-top "Recording" indicator; start/stop from any app with Ctrl+Alt+R (⌘⌥R on Mac).
 - **Official minutes per Russian standard GOST R 7.0.97-2016** in DOCX.
 - **Russian ASR with GigaAM v3** (Sber, MIT): 3.7% WER and 98% speaker accuracy on the test recording, 8–9× faster than real time on a CPU.
 

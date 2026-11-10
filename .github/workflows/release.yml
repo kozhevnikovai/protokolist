@@ -2,6 +2,8 @@ name: release
 on:
   release: { types: [published] }
   workflow_dispatch:
+  # ветки release/* — пробная сборка установщиков для ручной проверки (артефакты, без публикации)
+  push: { branches: ["release/**"] }
 permissions: { contents: write }
 jobs:
   build:
@@ -29,11 +31,12 @@ jobs:
         with:
           files: |
             release/*.exe
+            release/*.zip
             release/*.dmg
             build/*.mcpb
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'release'
-        with: { name: "build-${{ matrix.os }}", path: "release/*.exe\nrelease/*.dmg\nbuild/*.mcpb" }
+        with: { name: "build-${{ matrix.os }}", path: "release/*.exe\nrelease/*.zip\nrelease/*.dmg\nbuild/*.mcpb" }
   npm:
     needs: build
     if: github.event_name == 'release'

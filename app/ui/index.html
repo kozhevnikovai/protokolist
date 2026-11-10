@@ -8,14 +8,18 @@
 </head>
 <body>
 <aside>
-  <div class="brand"><svg viewBox="0 0 512 512" width="34" height="34"><circle cx="256" cy="256" r="256" fill="#161616"/><path d="M186 146 V366 M186 276 L320 146 M226 237 L330 366" stroke="#fff" stroke-width="36" fill="none"/><circle cx="352" cy="146" r="22" fill="#FF5A1F"/></svg>
-    <div><b>Протоколист</b><span class="mono">№ 003</span></div></div>
+  <div class="brand"><img src="icon.png" width="36" height="36" alt="">
+    <div><b>Протоколист</b><span id="ver">v1.1.0</span></div></div>
   <nav>
     <button data-view="record" class="on"><span class="mono">01</span>Запись</button>
     <button data-view="file"><span class="mono">02</span>Файл</button>
     <button data-view="archive"><span class="mono">03</span>Встречи</button>
-    <button data-view="settings"><span class="mono">04</span>Настройки</button>
+    <button data-view="tasks"><span class="mono">04</span>Задачи</button>
+    <button data-view="settings"><span class="mono">05</span>Настройки</button>
+    <button data-view="soon"><span class="mono">06</span>Скоро <i class="pill">Pro</i></button>
   </nav>
+  <!-- Фоновая задача (загрузка моделей, обработка): видна из любой вкладки -->
+  <button class="job" id="job" hidden><b id="job-t"></b><span class="bar thin"><i></i></span><small id="job-s"></small></button>
   <div class="net" id="net"><i></i><span>Сеть: 0 байт</span><small>всё обрабатывается на этом компьютере</small></div>
 </aside>
 
@@ -24,21 +28,32 @@
   <section id="v-setup" hidden>
     <div class="kicker">Первый запуск</div>
     <h1>Скачать модели</h1>
-    <p class="lead">Один раз, ≈ 2,7 ГБ. Дальше Протоколист работает без интернета: записи и тексты не покидают компьютер.</p>
-    <ul id="packs" class="plain"></ul>
+    <p class="lead">Один раз, <b id="dl-total">≈ 2,7 ГБ</b>. Дальше Протоколист работает без интернета: записи и тексты не покидают компьютер. Загрузку можно прервать — она продолжится с того же места.</p>
+    <ul id="packs" class="plain packs"></ul>
     <button class="primary" id="dl">Скачать</button>
-    <div class="bar" id="dlbar" hidden><i></i><span class="mono"></span></div>
+    <div id="dl-box" hidden>
+      <div class="bar" id="dlbar"><i></i><span></span></div>
+      <p class="note" id="dl-info"></p>
+      <p class="note">Можно переходить на другие вкладки — загрузка идёт в фоне, прогресс виден слева.</p>
+    </div>
   </section>
 
   <section id="v-record">
     <div class="kicker">Запись встречи</div>
     <h1>Zoom, Телемост, Контур.Толк, Teams — или живая встреча</h1>
     <p class="lead">Пишем микрофон и звук компьютера в две дорожки: ваш голос подписывается «Я» без ошибок, остальные участники разделяются автоматически.</p>
+    <div class="gate" id="gate" hidden>Чтобы записывать и расшифровывать, сначала скачайте модели. <button class="primary" data-go="setup">Скачать модели</button></div>
     <div class="panel">
+      <div class="row rec-row"><button class="primary big" id="rec">● Начать запись</button><span class="mono timer" id="timer">00:00</span><span class="note" id="hotkey-hint"></span></div>
       <label class="check"><input type="checkbox" id="rec-sys" checked> Звук встречи с компьютера (онлайн-звонок)</label>
       <label class="check"><input type="checkbox" id="rec-mic" checked> Мой микрофон</label>
+      <div class="grid2 mic-row">
+        <label>Микрофон<select id="mic-dev"><option value="">По умолчанию в системе</option></select></label>
+        <div class="mic-test"><button class="ghost" id="mic-test">Проверить микрофон</button><span class="note" id="mic-hint">Скажите пару слов — полоска должна двигаться</span></div>
+      </div>
+      <label class="check small"><input type="checkbox" id="mic-ns"> Шумоподавление микрофона (включайте, если вокруг шумно; на гарнитуре может «съедать» тихие слова)</label>
       <div class="meters"><div><span>Микрофон</span><b id="m-mic"><i></i></b></div><div><span>Встреча</span><b id="m-sys"><i></i></b></div></div>
-      <div class="row"><button class="primary big" id="rec">● Начать запись</button><span class="mono timer" id="timer">00:00</span></div>
+      <p class="note err" id="mic-warn" hidden></p>
       <details class="consent"><summary>Предупредите участников о записи — текст для чата</summary>
         <p id="consent-text">Коллеги, я записываю встречу для протокола. Запись и расшифровка обрабатываются только на моём компьютере и никуда не передаются. Если кто-то против — скажите, пожалуйста.</p>
         <button class="ghost" id="copy-consent">Скопировать</button></details>
@@ -48,6 +63,7 @@
   <section id="v-file" hidden>
     <div class="kicker">Готовая запись</div>
     <h1>Расшифровать файл</h1>
+    <div class="gate" hidden>Чтобы расшифровывать, сначала скачайте модели. <button class="primary" data-go="setup">Скачать модели</button></div>
     <p class="lead">Диктофон, запись Zoom или Телемоста, голосовое из Telegram, видео — любые форматы.</p>
     <div class="drop" id="drop"><b>Перетащите файл сюда</b><span>или</span><button class="ghost" id="pick">Выбрать файл</button></div>
   </section>
@@ -80,7 +96,7 @@
     <div id="r-tasks"></div>
     <div class="row wrap">
       <button class="primary" id="r-open">Открыть протокол</button>
-      <button class="ghost" id="r-folder">Папка</button>
+      <button class="ghost" id="r-copy">Скопировать итоги для чата</button><button class="ghost" id="r-folder">Папка</button>
       <button class="ghost" id="r-b24" hidden>→ Битрикс24</button>
       <button class="ghost" id="r-yg" hidden>→ YouGile</button>
       <button class="ghost" id="r-tg" hidden>→ Telegram</button>
@@ -96,6 +112,14 @@
     <table class="list" id="meetings"></table>
   </section>
 
+  <section id="v-tasks" hidden>
+    <div class="kicker">Из всех протоколов</div>
+    <h1>Задачи</h1>
+    <p class="lead">Что поручили на встречах: ответственный, срок и откуда задача. Нажмите на строку, чтобы открыть протокол.</p>
+    <div class="tile-row"><div>Всего задач<b id="t-all">0</b></div><div>Срок на этой неделе<b id="t-week">0</b></div><div>Проверить по записи<b id="t-review">0</b></div></div>
+    <label class="check small"><input type="checkbox" id="t-mine"> Только задачи без ответственного или срока</label>
+    <table class="tasks list" id="t-table"></table>
+  </section>
   <section id="v-settings" hidden>
     <div class="kicker">Настройки</div>
     <h1>Настройки</h1>
@@ -106,36 +130,92 @@
     <h2><span class="n">02</span>Протокол</h2>
     <div class="grid2">
       <label>Шаблон по умолчанию<select data-k="template" id="tpl-def"></select></label>
-      <label>Папка с протоколами<div class="row"><input data-k="outputDir" id="outdir"><button class="ghost" id="pickdir">…</button></div></label>
+      <label>Папка с протоколами<span class="inline"><input data-k="outputDir" id="outdir"><button class="ghost" id="pickdir">Обзор</button></span></label>
       <label>Ставка участника, ₽/час — для стоимости встречи<input type="number" data-k="hourlyRate" min="0"></label>
       <label>Форматы<input data-k="formats" placeholder="html,docx,md"></label>
     </div>
-    <label>Словарь компании: имена, продукты, термины. По строке; варианты через «=»<textarea data-k="glossary" rows="4" placeholder="Битрикс24 = битрикс двадцать четыре&#10;Кожевников"></textarea></label>
+    <label>Словарь компании<textarea data-k="glossary" rows="4" placeholder="Битрикс24 = битрикс двадцать четыре, битрикс&#10;KPI = кей пи ай, кипиай&#10;Ёлкин Иван&#10;ООО «Ромашка» = ромашка"></textarea></label>
+    <p class="note">Распознавание иногда пишет названия и фамилии «на слух». Слева от «=» — как должно быть в протоколе, справа через запятую — как это могут произнести. Строка без «=» просто подсказывает правильное написание имени или термина.</p>
     <h2><span class="n">03</span>Реквизиты для протокола по ГОСТ</h2>
     <div class="grid2">
       <label>Организация<input data-k="gost.organization"></label><label>Место<input data-k="gost.place"></label>
       <label>Председатель<input data-k="gost.chair"></label><label>Секретарь<input data-k="gost.secretary"></label>
     </div>
-    <h2><span class="n">04</span>Интеграции <small>— данные уходят в сервис, только когда вы нажмёте кнопку</small></h2>
-    <div class="grid2">
-      <label>Битрикс24: входящий вебхук (права task, user)<input data-k="bitrix24.webhook" placeholder="https://портал.bitrix24.ru/rest/1/код/"></label>
-      <label>YouGile: ключ API<input data-k="yougile.key" type="password"></label>
-      <label>YouGile: ID колонки для задач<input data-k="yougile.columnId"></label>
-      <label>Telegram: токен бота от @BotFather<input data-k="telegram.token" type="password"></label>
-      <label>Telegram: ID чата<input data-k="telegram.chatId"></label>
+    <h2><span class="n">04</span>Подключения <small>— данные уходят в сервис, только когда вы нажмёте кнопку на экране протокола</small></h2>
+    <div class="cards">
+      <div class="card" data-svc="bitrix24">
+        <h3>Битрикс24 <span class="status" data-st="bitrix24"></span></h3>
+        <p>Создаёт задачи из протокола: текст, ответственный (по имени), срок и цитата из встречи.</p>
+        <details><summary>Где взять вебхук — 4 шага</summary><ol>
+          <li>Битрикс24 → «Разработчикам» → «Другое» → «Входящий вебхук».</li>
+          <li>В правах отметьте «Задачи (task)» и «Пользователи (user)».</li>
+          <li>Нажмите «Сохранить» и скопируйте адрес вебхука.</li>
+          <li>Вставьте сюда и нажмите «Проверить».</li></ol></details>
+        <label>Вебхук<input data-k="bitrix24.webhook" type="password" autocomplete="off" placeholder="https://портал.bitrix24.ru/rest/1/код/"></label>
+        <div class="row"><button class="ghost" data-check="bitrix24">Проверить подключение</button><button class="link" data-clear="bitrix24.webhook">Отключить</button></div>
+        <p class="note" data-res="bitrix24"></p>
+      </div>
+      <div class="card" data-svc="yougile">
+        <h3>YouGile <span class="status" data-st="yougile"></span></h3>
+        <p>Кладёт задачи из протокола в выбранную колонку доски, с исполнителем и сроком.</p>
+        <details><summary>Где взять ключ и ID колонки — 4 шага</summary><ol>
+          <li>YouGile → «Настройки компании» → «API» → «Создать ключ».</li>
+          <li>Скопируйте ключ и вставьте ниже.</li>
+          <li>На доске откройте меню колонки → «Скопировать ID».</li>
+          <li>Вставьте ID и нажмите «Проверить».</li></ol></details>
+        <label>Ключ API<input data-k="yougile.key" type="password" autocomplete="off"></label>
+        <label>ID колонки<input data-k="yougile.columnId" autocomplete="off"></label>
+        <div class="row"><button class="ghost" data-check="yougile">Проверить подключение</button><button class="link" data-clear="yougile.key">Отключить</button></div>
+        <p class="note" data-res="yougile"></p>
+      </div>
+      <div class="card" data-svc="telegram">
+        <h3>Telegram <span class="status" data-st="telegram"></span></h3>
+        <p>Присылает краткий протокол (решения и задачи) и файл .docx в ваш чат или группу.</p>
+        <details><summary>Как подключить бота — 4 шага</summary><ol>
+          <li>Напишите @BotFather → /newbot, придумайте имя — получите токен.</li>
+          <li>Напишите своему боту /start (или добавьте его в группу).</li>
+          <li>ID чата подскажет бот @userinfobot (для группы — число с минусом).</li>
+          <li>Вставьте токен и ID и нажмите «Проверить».</li></ol></details>
+        <label>Токен бота<input data-k="telegram.token" type="password" autocomplete="off" placeholder="123456789:AAE…"></label>
+        <label>ID чата<input data-k="telegram.chatId" autocomplete="off" placeholder="123456789 или -100…"></label>
+        <div class="row"><button class="ghost" data-check="telegram">Проверить подключение</button><button class="link" data-clear="telegram.token">Отключить</button></div>
+        <p class="note" data-res="telegram"></p>
+      </div>
     </div>
+    <p class="note">Ключи хранятся на этом компьютере в зашифрованном виде (средствами Windows или macOS) и не показываются после сохранения.</p>
     <h2><span class="n">05</span>Модель для протокола</h2>
     <div class="grid2">
       <label>Где работает<select data-k="llm.provider"><option value="local">На этом компьютере (по умолчанию)</option><option value="openai">Облако: OpenAI-совместимый API</option></select></label>
       <label>Ускорение<select data-k="llm.gpu"><option value="auto">Авто (видеокарта, если есть)</option><option value="cpu">Только процессор</option><option value="vulkan">Vulkan</option><option value="cuda">CUDA (NVIDIA)</option></select></label>
       <label>Облако: адрес API<input data-k="llm.baseUrl" placeholder="https://llm.api.cloud.yandex.net/v1"></label>
       <label>Облако: модель<input data-k="llm.model"></label>
-      <label>Облако: ключ<input data-k="llm.apiKey" type="password"></label>
+      <label>Облако: ключ<input data-k="llm.apiKey" type="password" autocomplete="off"></label>
     </div>
     <p class="note">Облачная модель получает текст стенограммы. Для 152-ФЗ выбирайте провайдера с серверами в России и предупреждайте участников.</p>
     <div class="row"><button class="primary" id="save">Сохранить</button><span class="mono" id="saved"></span></div>
   </section>
+<section id="v-soon" hidden>
+    <div class="kicker">Планы</div>
+    <h1>Скоро: Протоколист для команды</h1>
+    <p class="lead">Всё, что есть сейчас, остаётся бесплатным и открытым (MIT). Платная версия добавит то, что нужно отделу и компании. Этих возможностей пока нет — мы над ними работаем.</p>
+    <div class="cards soon">
+      <div class="card"><h3>Общий архив команды <span class="status">скоро</span></h3><p>Протоколы всех сотрудников в одном месте, поиск «что решили про бюджет» по всей компании, права доступа.</p></div>
+      <div class="card"><h3>Контроль поручений <span class="status">скоро</span></h3><p>Статусы задач, напоминания о сроках в Telegram, сводка «что не сделано с прошлой планёрки».</p></div>
+      <div class="card"><h3>Серии встреч <span class="status">скоро</span></h3><p>Еженедельные планёрки и 1:1 связываются в цепочку: что изменилось, какие вопросы тянутся месяцами.</p></div>
+      <div class="card"><h3>Знакомые голоса <span class="status">скоро</span></h3><p>Участники подписываются сами: один раз назвали — дальше Протоколист узнаёт по голосу.</p></div>
+      <div class="card"><h3>Больше подключений <span class="status">скоро</span></h3><p>amoCRM, Kaiten, Яндекс Трекер, календарь: задачи и итоги встречи сразу там, где работает команда.</p></div>
+      <div class="card"><h3>Точнее и быстрее <span class="status">скоро</span></h3><p>Ускорение на видеокарте, усиленная модель для сложных записей, субтитры во время встречи.</p></div>
+    </div>
+    <div class="row wrap"><button class="primary" id="soon-want">Хочу ранний доступ</button><span class="note">Откроется страница на GitHub: напишите, что вам важнее, — это влияет на порядок разработки.</span></div>
+    <h2>Другие инструменты kozhevnikovai</h2>
+    <div class="cards">
+      <button class="card as-link" data-url="https://github.com/kozhevnikovai/tender-pomoshnik"><h3>Тендерный помощник</h3><p>Разбор госзакупок 44-ФЗ и 223-ФЗ с цитатами и ссылками на закон.</p></button>
+      <button class="card as-link" data-url="https://github.com/kozhevnikovai/site-audit-ru"><h3>site-audit-ru</h3><p>Аудит сайта и конкурентов: SEO, путь к заявке, 152-ФЗ.</p></button>
+      <button class="card as-link" data-url="https://github.com/kozhevnikovai/ai-skills-ru-business"><h3>Навыки для Claude</h3><p>КП, ответы на отзывы, вакансии, регламенты — в том числе «встреча → задачи».</p></button>
+    </div>
+  </section>
 </main>
+<div id="toasts"></div>
 <script src="app.js"></script>
 </body>
 </html>

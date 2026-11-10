@@ -21,6 +21,19 @@ export const load = (dir: string): Meeting => JSON.parse(readFileSync(join(dir, 
 export interface Hit { id: string; date: string; title: string; where: string; at: number | null; text: string; file: string }
 
 /** Поиск по словам во всех протоколах и стенограммах: решения и задачи выше реплик */
+export interface TaskItem { text: string; owner: string; due: string | null; dueText: string | null; review: boolean; meeting: string; date: string; file: string }
+
+/** Все задачи из протоколов — сводная вкладка «Задачи»: сначала с ближайшим сроком */
+export function listTasks(root: string): TaskItem[] {
+  const out: TaskItem[] = [];
+  for (const m of listMeetings(root)) {
+    let tasks: any[] = [];
+    try { tasks = load(m.dir).protocol?.tasks ?? []; } catch { continue; }
+    for (const t of tasks) out.push({ text: t.text, owner: t.owner ?? "", due: t.due ?? null, dueText: t.dueText ?? null, review: !!t.review, meeting: m.title, date: m.date, file: m.file });
+  }
+  return out.sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999") || b.date.localeCompare(a.date));
+}
+
 export function searchMeetings(root: string, query: string, limit = 30): Hit[] {
   const words = query.toLowerCase().replace(/ё/g, "е").split(/\s+/).filter(w => w.length > 1).map(w => (w.length >= 5 ? w.slice(0, w.length > 6 ? -2 : -1) : w));
   const match = (s: string) => { const t = s.toLowerCase().replace(/ё/g, "е"); return words.every(w => t.includes(w)); };

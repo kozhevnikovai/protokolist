@@ -2,8 +2,8 @@
 // а протокол может составить сам Claude — без своей языковой модели и ключей.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { isAbsolute, join, relative } from "node:path";
 import { z } from "zod";
 import { hitLine, listMeetings, load, searchMeetings } from "./archive.js";
 import { loadConfig } from "./config.js";
@@ -19,11 +19,17 @@ import { VERSION } from "./version.js";
 
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
 
-function resolveDir(id: string) {
-  const root = loadConfig().outputDir;
-  const dir = existsSync(join(id, "встреча.json")) ? id : join(root, id);
-  if (!existsSync(join(dir, "встреча.json"))) throw new Error(`Встреча «${id}» не найдена. Список — инструмент list_meetings.`);
-  return dir;
+/** id встречи → папка. Только внутри папки протоколов: «../», чужие абсолютные пути и ссылки наружу отклоняются. */
+export function resolveDir(id: string, root = loadConfig().outputDir) {
+  const notFound = new Error(`Встреча «${id}» не найдена. Список — инструмент list_meetings.`);
+  if (!existsSync(root)) throw notFound;
+  const base = realpathSync(root);
+  const cand = isAbsolute(id) ? id : join(base, id);
+  if (!existsSync(join(cand, "встреча.json"))) throw notFound;
+  const real = realpathSync(cand);
+  const rel = relative(base, real);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) throw new Error("Можно открывать только встречи из папки протоколов");
+  return real;
 }
 
 export function buildServer(): McpServer {
@@ -48,7 +54,7 @@ export function buildServer(): McpServer {
   const item = z.object({ text: z.string(), quote: z.string().describe("Дословная цитата 5–15 слов из стенограммы") });
   server.registerTool("save_protocol", {
     title: "Сохранить протокол",
-    description: `Проверяет протокол по стенограмме (находит цитаты и тайм-коды, вычисляет даты сроков) и сохраняет HTML («Чертёж»), DOCX и Markdown в папку встречи. Шаблоны: ${Object.values(TEMPLATES).map(t => `${t.id} — ${t.title}`).join("; ")}.`,
+    description: `Проверяет протокол по стенограмме (находит цитаты и тайм-коды, вычисляет даты сроков) и сохраняет HTML, DOCX и Markdown в папку встречи. Шаблоны: ${Object.values(TEMPLATES).map(t => `${t.id} — ${t.title}`).join("; ")}.`,
     inputSchema: {
       id: z.string().describe("id встречи из transcribe_meeting"),
       template: z.enum(Object.keys(TEMPLATES) as [string, ...string[]]).default("planerka"),

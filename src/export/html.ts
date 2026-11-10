@@ -1,4 +1,4 @@
-// HTML-протокол в стиле «Чертёж»: один файл, шрифты встроены, работает без интернета.
+// HTML-протокол в светлом стиле приложений kozhevnikovai: один файл, шрифты встроены, работает без интернета.
 // Тайм-коды кликабельны: если рядом лежит аудио, фрагмент проигрывается с нужного места.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -16,7 +16,6 @@ function fontFaces(): string {
   const f: [string, string, string, number, string][] = [
     ["Geologica", "@fontsource/geologica", "geologica-cyrillic-400-normal.woff2", 400, CYR], ["Geologica", "@fontsource/geologica", "geologica-latin-400-normal.woff2", 400, LAT],
     ["Geologica", "@fontsource/geologica", "geologica-cyrillic-600-normal.woff2", 600, CYR], ["Geologica", "@fontsource/geologica", "geologica-latin-600-normal.woff2", 600, LAT],
-    ["Martian Mono", "@fontsource/martian-mono", "martian-mono-cyrillic-400-normal.woff2", 400, CYR], ["Martian Mono", "@fontsource/martian-mono", "martian-mono-latin-400-normal.woff2", 400, LAT],
   ];
   return f.map(([fam, pkg, file, w, r]) => {
     try { return `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${readFileSync(require.resolve(`${pkg}/files/${file}`)).toString("base64")}) format("woff2");unicode-range:${r}}`; } catch { return ""; }
@@ -24,29 +23,30 @@ function fontFaces(): string {
 }
 
 const CSS = `
-:root{--ink:#161616;--pencil:#5C5C5C;--axis:#9C9C9C;--plate:#E6E6E6;--sig:#FF5A1F;--sigt:#C8410F;--ok:#2F7A4B;--warn:#B07A00}
-*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:15px/1.55 Geologica,system-ui,sans-serif}
-.sheet{max-width:1040px;margin:32px auto;border:3px solid var(--ink);padding:40px 48px 0}
-.mono,.tc,table.stamp td b{font-family:"Martian Mono",ui-monospace,monospace}
-.kicker{font:12px "Martian Mono",monospace;color:var(--pencil);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
-.kicker:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--sig)}
-h1{font-size:34px;line-height:1.15;margin:10px 0 6px;font-weight:600}h2{font-size:19px;margin:36px 0 12px;font-weight:600;display:flex;gap:12px;align-items:baseline}
-h2 .n{font:12px "Martian Mono",monospace;color:var(--pencil)}h3{font-size:16px;margin:18px 0 6px}
-.meta{color:var(--pencil);font-size:14px}.axis{border:0;border-top:1px dashed var(--axis);margin:28px 0}
-.summary{border-left:3px solid var(--ink);padding:4px 0 4px 16px;font-size:16px}
-ol,ul{padding-left:22px}li{margin:4px 0}
-table{border-collapse:collapse;width:100%}th,td{border:1px solid var(--ink);padding:8px 10px;text-align:left;vertical-align:top}th{background:var(--plate);font-weight:600;font-size:13px}
-.tc{font-size:12px;color:var(--ink);background:var(--plate);padding:1px 6px;cursor:pointer;border:0;white-space:nowrap}.tc:hover{background:var(--ink);color:#fff}
-.review{color:var(--sigt);font:12px "Martian Mono",monospace}.tc.bad{background:#fff;color:var(--sigt);border:1px solid var(--sigt)}
-.bars div{display:grid;grid-template-columns:160px 1fr 60px;gap:12px;align-items:center;margin:6px 0}.bars i{display:block;height:10px;background:var(--ink)}.bars i.me{background:var(--sig)}
+:root{--bg:#FBFBFA;--card:#fff;--ink:#1A1A19;--pencil:#5C5C57;--line:#E8E8E5;--plate:#F1F1EE;--acc:#C2410C;--ok:#1F7A4A;--okbg:#E7F3EC;--warn:#9A5B00;--warnbg:#FFF3DF;--bad:#B3261E;--badbg:#FCE9E7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Geologica,"Segoe UI",system-ui,sans-serif}
+.sheet{max-width:980px;margin:32px auto;padding:0 20px 40px}
+.mono,.tc{font-variant-numeric:tabular-nums}
+.kicker{font-size:13px;font-weight:600;color:var(--acc);display:flex;align-items:center;gap:8px}
+h1{font-size:30px;line-height:1.2;margin:8px 0 8px;font-weight:600;letter-spacing:-.01em}h2{font-size:18px;margin:0 0 12px;font-weight:600}h2 .n{display:none}h3{font-size:15px;margin:16px 0 6px}
+.meta{color:var(--pencil);font-size:14px}.axis{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0 8px}.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}.tile b{display:block;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}.tile span{font-size:13px;color:var(--pencil)}.tile.warn b{color:var(--warn)}
+.summary{font-size:16px;margin:0}
+ol,ul{padding-left:22px;margin:0}li{margin:4px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:var(--plate);color:var(--pencil);font-weight:600;font-size:13px}tr:last-child td{border-bottom:0}
+.tc{font-size:12px;color:var(--ink);background:var(--plate);padding:2px 8px;cursor:pointer;border:0;border-radius:999px;white-space:nowrap;font-family:inherit}.tc:hover{background:var(--acc);color:#fff}
+.review{color:var(--bad);font-size:12px;font-weight:600}.tc.bad{background:var(--badbg);color:var(--bad)}
+.bars div{display:grid;grid-template-columns:160px 1fr 60px;gap:12px;align-items:center;margin:8px 0}.bars i{display:block;height:10px;border-radius:5px;background:#A8A8A2}.bars i.me{background:var(--acc)}
 .tr p{margin:6px 0}.tr b{font-weight:600}.tr .hide{display:none}
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tools input{flex:1;min-width:200px;border:1px solid var(--ink);padding:7px 10px;font:inherit}
-button.b{border:1px solid var(--ink);background:#fff;padding:7px 12px;font:inherit;cursor:pointer}button.b:hover{background:var(--ink);color:#fff}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tools input{flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;background:#fff}.tools input:focus{outline:2px solid var(--acc);outline-offset:1px}
+button.b{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 14px;font:inherit;cursor:pointer}button.b:hover{background:var(--plate)}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 audio{width:100%;margin:8px 0}
-table.stamp{margin:40px -48px 0;width:calc(100% + 96px);border-top:3px solid var(--ink)}table.stamp td{border:0;border-right:1px solid var(--ink);padding:10px 14px;font-size:11px;color:var(--pencil)}table.stamp td:last-child{border-right:0}table.stamp b{display:block;color:var(--ink);font-size:13px;font-weight:400}
-.pill{display:inline-block;font:11px "Martian Mono",monospace;border:1px solid var(--ok);color:var(--ok);padding:2px 8px}
-@media print{.tools,audio,button{display:none}.sheet{margin:0;border:0;padding:0}table.stamp{margin:30px 0 0;width:100%}}
-@media (max-width:700px){.sheet{margin:0;border:0;padding:20px}.bars div{grid-template-columns:100px 1fr 44px}table.stamp{display:none}}`;
+.foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--pencil)}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;background:var(--okbg);color:var(--ok);padding:2px 10px}.pill.cloud{background:var(--warnbg);color:var(--warn)}
+@media print{body{background:#fff}.tools,audio,button.b{display:none}.sheet{margin:0;padding:0}.card{box-shadow:none;break-inside:avoid}}
+@media (max-width:700px){.sheet{margin:0;padding:16px}.card{padding:16px}.bars div{grid-template-columns:100px 1fr 44px}}`;
 
 export interface HtmlOptions { /** Относительный путь к аудио рядом с отчётом */ audio?: string; /** Сколько байт данных встречи ушло в сеть (облачная модель) */ sentBytes?: number }
 
@@ -54,7 +54,8 @@ export function toHtml(m: Meeting, o: HtmlOptions = {}): string {
   const { transcript: tr, protocol: p, analytics: a } = m;
   const T = (t: number | null) => (t === null ? `<span class="tc bad" title="Цитата не найдена — проверьте по записи">проверить</span>` : `<button class="tc" data-t="${t}">${fmtTime(t)}</button>`);
   let n = 0;
-  const H = (title: string) => `<h2><span class="n">${String(++n).padStart(2, "0")}</span>${esc(title)}</h2>`;
+  // каждый раздел — отдельная карточка: заголовок открывает её, следующий заголовок закрывает предыдущую
+  const H = (title: string) => `${n++ ? "</section>" : ""}<section class="card"><h2>${esc(title)}</h2>`;
   const S: string[] = [];
   if (p) {
     if (p.meta.warnings?.length) S.push(p.meta.warnings.map(w => `<p class="review">● ${esc(w)}</p>`).join(""));
@@ -82,13 +83,14 @@ export function toHtml(m: Meeting, o: HtmlOptions = {}): string {
 <title>${esc(p?.title ?? "Стенограмма")} — ${ruDate(tr.date)}</title><style>${fontFaces()}${CSS}</style></head><body><div class="sheet">
 <div class="kicker">Протоколист · ${p ? esc(getTemplate(p.template).title) : "стенограмма"}</div>
 <h1>${esc(p?.title ?? "Стенограмма встречи")}</h1>
-<div class="meta">${ruDate(tr.date)} · ${fmtTime(tr.duration)} · ${esc(tr.speakers.map(s => s.label).join(", "))} &nbsp;${o.sentBytes ? `<span class="pill" style="border-color:var(--warn);color:var(--warn)">● протокол составлен облачной моделью</span>` : `<span class="pill">● обработано локально · 0 байт в сеть</span>`}</div>
-<hr class="axis">${S.join("\n")}
-<table class="stamp"><tr><td>Разработчик<b>kozhevnikovai</b></td><td>Номер<b>№ 003</b></td><td>Решений / задач<b>${p ? `${p.decisions.length} / ${p.tasks.length}` : "—"}</b></td><td>Проверить<b>${reviews}</b></td><td>Версия<b>${VERSION}</b></td><td>Лицензия<b>MIT</b></td></tr></table>
+<div class="meta">${ruDate(tr.date)} · ${fmtTime(tr.duration)} · ${esc(tr.speakers.map(s => s.label).join(", "))} &nbsp;${o.sentBytes ? `<span class="pill cloud">● протокол составлен облачной моделью</span>` : `<span class="pill">● обработано локально · 0 байт в сеть</span>`}</div>
+<div class="tiles">${p ? `<div class="tile"><b>${p.decisions.length}</b><span>решений</span></div><div class="tile"><b>${p.tasks.length}</b><span>задач</span></div>` : ""}<div class="tile${reviews ? " warn" : ""}"><b>${reviews}</b><span>проверить по записи</span></div><div class="tile"><b>${fmtTime(tr.duration)}</b><span>длительность</span></div></div>
+${S.join("\n")}${n ? "</section>" : ""}
+<div class="foot">Протоколист ${VERSION} · kozhevnikovai · MIT</div>
 </div><script>
 const au=document.getElementById('au');
 document.addEventListener('click',e=>{const b=e.target.closest('.tc[data-t]');if(!b)return;const t=+b.dataset.t;
-if(au){au.currentTime=Math.max(0,t-1);au.play();}else{const ps=[...document.querySelectorAll('.tr p')];const p=ps.find(x=>+x.querySelector('.tc').dataset.t>=t)||ps[0];p.scrollIntoView({block:'center'});p.style.background='#E6E6E6';setTimeout(()=>p.style.background='',1500);}});
+if(au){au.currentTime=Math.max(0,t-1);au.play();}else{const ps=[...document.querySelectorAll('.tr p')];const p=ps.find(x=>+x.querySelector('.tc').dataset.t>=t)||ps[0];p.scrollIntoView({block:'center'});p.style.background='#FFF3DF';setTimeout(()=>p.style.background='',1500);}});
 document.getElementById('q').addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('.tr p').forEach(p=>p.classList.toggle('hide',!!q&&!p.textContent.toLowerCase().includes(q)));});
 </script></body></html>`;
 }

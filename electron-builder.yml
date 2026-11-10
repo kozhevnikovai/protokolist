@@ -7,12 +7,12 @@ extraMetadata:
   main: app/main.mjs
 directories:
   output: release
-  buildResources: app/build
+  buildResources: app/assets
 npmRebuild: false
 files:
   - dist/**
   - app/**
-  - "!app/build/**"
+  - "!app/assets/**"
   - package.json
   - "!**/*.map"
   - "!node_modules/@node-llama-cpp/*cuda*/**"
@@ -22,8 +22,9 @@ asarUnpack:
   - node_modules/@node-llama-cpp/**
   - node_modules/node-llama-cpp/**
 win:
-  target: [{ target: nsis, arch: [x64] }]
-  icon: app/build/icon.png
+  # установщик и портативная версия (zip — без установки, если Windows не даёт запустить установщик)
+  target: [{ target: nsis, arch: [x64] }, { target: zip, arch: [x64] }]
+  icon: app/assets/icon.ico
   files:
     - "!node_modules/sherpa-onnx-darwin-*/**"
     - "!node_modules/sherpa-onnx-linux-*/**"
@@ -38,15 +39,19 @@ nsis:
   createDesktopShortcut: true
   shortcutName: Протоколист
   language: "1049"
+  installerIcon: app/assets/icon.ico
+  uninstallerIcon: app/assets/icon.ico
+  # вопрос «удалить модели и настройки?» при удалении программы
+  include: app/assets/installer.nsh
 mac:
   target: [{ target: dmg, arch: [arm64, x64] }]
-  icon: app/build/icon.png
+  icon: app/assets/icon.icns
   category: public.app-category.productivity
   identity: null
   hardenedRuntime: false
   extendInfo:
     NSMicrophoneUsageDescription: Протоколист записывает ваш микрофон для протокола встречи. Запись обрабатывается только на этом компьютере.
-    NSScreenCaptureUsageDescription: Нужно для записи звука онлайн-встречи (Zoom, Телемост, Контур.Толк). Видео не записывается.
+    NSScreenCaptureUsageDescription: Нужно, чтобы записывать звук онлайн-встречи из Zoom, Телемоста, Контур.Толка и других программ. Видео не записывается.
     NSAudioCaptureUsageDescription: Нужно для записи звука онлайн-встречи. Запись обрабатывается только на этом компьютере.
   files:
     - "!node_modules/sherpa-onnx-win-*/**"

@@ -1,0 +1,27 @@
+name: security
+# CodeQL — поиск уязвимостей в коде; gitleaks — поиск ключей и паролей по всей истории коммитов
+on:
+  push: { branches: [main, "release/**"] }
+  pull_request:
+  schedule: [{ cron: "17 3 * * 1" }]
+permissions: { contents: read }
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, security-events: write, actions: read }
+    strategy:
+      fail-fast: false
+      matrix: { language: [javascript-typescript, actions] }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v3
+        with: { languages: "${{ matrix.language }}", queries: security-extended }
+      - uses: github/codeql-action/analyze@v3
+        with: { category: "/language:${{ matrix.language }}" }
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - name: gitleaks (вся история)
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git /repo --config /repo/.gitleaks.toml --redact --verbose --no-banner --exit-code 1

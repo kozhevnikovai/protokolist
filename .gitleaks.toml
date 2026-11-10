@@ -1,0 +1,8 @@
+# Стандартные правила gitleaks + исключения для ложных срабатываний
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Не секреты: сочетание клавиш записи, ключи кэша GitHub Actions"
+regexTarget = "line"
+regexes = ['''CommandOrControl\+Alt\+R''', '''key: llm-[a-z0-9.-]+''']
