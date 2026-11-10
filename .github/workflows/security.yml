@@ -24,4 +24,4 @@ jobs:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - name: gitleaks (вся история)
-        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git /repo --redact --no-banner --exit-code 1
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git /repo --config /repo/.gitleaks.toml --redact --verbose --no-banner --exit-code 1

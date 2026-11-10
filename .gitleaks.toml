@@ -1,0 +1,7 @@
+# Стандартные правила gitleaks + исключения для ложных срабатываний
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Не секреты: сочетание клавиш записи"
+regexes = ['''CommandOrControl\+Alt\+R''']
