@@ -15,6 +15,8 @@ export interface Speaker {
   label: string;
   /** Суммарное время речи, с */
   talk: number;
+  /** Имя подставлено по знакомому голосу — пользователь может исправить */
+  known?: boolean;
 }
 
 export interface Transcript {
@@ -27,6 +29,8 @@ export interface Transcript {
   segments: Segment[];
   /** Сколько секунд заняло распознавание и с каким ускорением */
   stats: { asrSeconds: number; diarSeconds: number; rtf: number; device: string };
+  /** Отпечатки голосов спикеров — только в памяти, для «знакомых голосов»; в архив не сохраняются */
+  voices?: Record<string, number[]>;
 }
 
 export interface Quote {
@@ -50,6 +54,20 @@ export interface Task extends Quote {
   due: string | null;
   /** Требует проверки человеком: цитата не найдена или неясен ответственный/срок */
   review: boolean;
+  /** Отмечена выполненной на вкладке «Задачи» */
+  done?: boolean;
+}
+
+/** Задача с прошлой встречи серии и её статус сейчас */
+export interface CarriedTask {
+  text: string;
+  owner: string;
+  due: string | null;
+  /** done — отмечена выполненной; discussed — упоминалась на этой встрече (at — тайм-код); open — не выполнена и не обсуждалась */
+  status: "done" | "discussed" | "open";
+  at: number | null;
+  /** Дата встречи, где задачу поставили */
+  from: string;
 }
 
 export interface Topic {

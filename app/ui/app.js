@@ -236,7 +236,7 @@ pk.on("meeting", m => {
   if (m.start) { show("record"); startRec(); return; }
   const b = document.createElement("div");
   b.className = "banner";
-  b.innerHTML = `<span>Похоже, началась встреча в ${esc(m.app)}.</span><button class="primary">Записать</button>`;
+  b.innerHTML = `<span>${m.app === "звонок" ? "Похоже, начался звонок." : `Похоже, началась встреча в ${esc(m.app)}.`}</span><button class="primary">Записать</button>`;
   b.querySelector("button").onclick = () => { b.remove(); show("record"); startRec(); };
   $("#v-record").prepend(b);
   setTimeout(() => b.remove(), 60000);
@@ -381,9 +381,11 @@ async function process(file, micFile, recFiles = []) {
     setJob("work", "Подпишите участников", 0.8, "ждём вас");
     $("#sp-list").innerHTML = tr.speakers.map(s => {
       const first = tr.segments.find(x => x.speaker === s.id);
-      return `<div class="sp"><span>${esc(s.label)} · ${fmt(s.talk)}</span><input data-sp="${esc(s.id)}" maxlength="60" placeholder="${esc(s.id === "me" ? "Я (ваше имя)" : "Имя")}"><q title="${esc(first?.text)}">${esc(first?.text ?? "")}</q></div>`;
+      const known = s.known ? ` value="${esc(s.label)}"` : "";
+      return `<div class="sp"><span>${s.known ? "узнан по голосу" : esc(s.label)} · ${fmt(s.talk)}</span><input data-sp="${esc(s.id)}" maxlength="60"${known} placeholder="${esc(s.id === "me" ? "Я (ваше имя)" : "Имя")}"><q title="${esc(first?.text)}">${esc(first?.text ?? "")}</q></div>`;
     }).join("") || `<p class="note">Речь не найдена. Проверьте, что в записи есть звук.</p>`;
     $("#tpl").value = state.config.template;
+    pk.core("series").then(list => { $("#series-list").innerHTML = list.map(x => `<option value="${esc(x)}">`).join(""); }).catch(() => {});
     $("#speakers").hidden = false;
     $("#make").disabled = $("#only-tr").disabled = false;
   } catch (e) { fail(e); }
@@ -399,7 +401,7 @@ async function makeProtocol(noProtocol) {
   setJob("work", noProtocol ? "Сохраняем" : "Составляем протокол", 0.85, "");
   try {
     const agenda = $("#agenda").value.split("\n").map(s => s.trim()).filter(Boolean).slice(0, 30);
-    const r = await pk.core("protocol", { transcript: state.transcript, file: state.file, micFile: state.micFile, names, template: $("#tpl").value, agenda, keepAudio: $("#keep").checked, noProtocol });
+    const r = await pk.core("protocol", { transcript: state.transcript, file: state.file, micFile: state.micFile, names, template: $("#tpl").value, agenda, keepAudio: $("#keep").checked, noProtocol, series: $("#series").value.trim() });
     // запись уже сведена в папку встречи — черновые дорожки больше не нужны
     pk.recDone(state.recFiles);
     showResult(r);
@@ -408,6 +410,9 @@ async function makeProtocol(noProtocol) {
 $("#make").addEventListener("click", () => makeProtocol(false));
 $("#only-tr").addEventListener("click", () => makeProtocol(true));
 
+// Кнопки отправки: [кнопка, сервис, что значит «настроено», нужны ли задачи]
+const SEND = [["#r-b24", "bitrix24", "bitrix24.webhook", "tasks"], ["#r-yg", "yougile", "yougile.key", "tasks"], ["#r-tg", "telegram", "telegram.token", "any"],
+  ["#r-kt", "kaiten", "kaiten.token", "tasks"], ["#r-yt", "tracker", "tracker.token", "tasks"], ["#r-pc", "pachca", "pachca.token", "any"], ["#r-ob", "obsidian", "obsidian.vault", "any"]];
 function fail(e) {
   setBusy(false);
   setJob(null);
@@ -415,7 +420,8 @@ function fail(e) {
   $("#r-title").textContent = "Не получилось";
   $("#r-summary").textContent = e.message.replace(/^Error invoking remote method 'core': (Error: )?/, "");
   $("#r-stats").innerHTML = $("#r-tasks").innerHTML = "";
-  $$("#r-open, #r-copy, #r-folder, #r-b24, #r-yg, #r-tg").forEach(b => (b.hidden = true));
+  $$("#r-open, #r-copy, #r-folder, " + SEND.map(x => x[0]).join(", ")).forEach(b => (b.hidden = true));
+  $("#r-prev").hidden = true;
   $("#r-note").textContent = state.recFiles.length ? "Запись сохранена — её можно расшифровать заново на вкладке «Запись». " : "";
   $("#r-note").textContent += "Если ошибка повторяется — сообщите на github.com/kozhevnikovai/protokolist/issues (без записи с личными данными).";
 }
@@ -433,14 +439,23 @@ function showResult(r) {
   $("#r-stats").innerHTML = p ? `<div>Решений<b>${p.decisions.length}</b></div><div>Задач<b>${p.tasks.length}</b></div><div>Проверить<b>${review}</b></div><div>Модель<b style="font-size:12px">${esc(p.meta.model)}</b></div><div>В сеть<b>${r.netBytes} Б</b></div>` : "";
   $("#r-tasks").innerHTML = p?.tasks.length ? `<table><tr><th>Задача</th><th>Ответственный</th><th>Срок</th></tr>${p.tasks.map(t => `<tr><td>${esc(t.text)}${t.review ? '<div class="review">● проверить по записи</div>' : ""}</td><td>${esc(t.owner || "—")}</td><td>${t.due ? ruDate(t.due) : esc(t.dueText || "—")}</td></tr>`).join("")}</table>` : "";
   const c = state.config, set = c.secretsSet ?? {};
-  const can = !c.offline && !!p?.tasks.length;
   $("#r-open").hidden = $("#r-folder").hidden = false;
   $("#r-copy").hidden = !p;
-  $("#r-b24").hidden = !(can && set["bitrix24.webhook"]);
-  $("#r-yg").hidden = !(can && set["yougile.key"]);
-  $("#r-tg").hidden = !(!c.offline && p && set["telegram.token"]);
+  for (const [id, , key, what] of SEND) {
+    const ready = key.includes(".token") || key.includes(".webhook") || key.includes(".key") ? set[key] : !!get(c, key);
+    const online = id === "#r-ob" || !c.offline;
+    $(id).hidden = !(p && ready && online && (what !== "tasks" || p.tasks.length));
+    $(id).disabled = false;
+    $(id).textContent = $(id).dataset.label ??= $(id).textContent;
+  }
+  const pv = r.previous;
+  if (pv?.tasks.length) {
+    const n = k => pv.tasks.filter(t => t.status === k).length;
+    $("#r-prev").textContent = `С прошлой встречи серии «${r.series}» (${ruDate(pv.date)}): выполнено ${n("done")}, обсуждали ${n("discussed")}, не выполнено ${n("open")} — подробно в протоколе.`;
+    $("#r-prev").hidden = false;
+  }
   $("#r-note").classList.remove("err");
-  $("#r-note").textContent = c.offline && (set["bitrix24.webhook"] || set["yougile.key"] || set["telegram.token"]) ? "Подключения настроены, но включён строгий офлайн — выключите его в настройках, чтобы отправлять задачи." : "";
+  $("#r-note").textContent = c.offline && SEND.some(([id, , key]) => id !== "#r-ob" && set[key]) ? "Подключения настроены, но включён строгий офлайн — выключите его в настройках, чтобы отправлять задачи." : "";
 }
 // Итоги встречи одним сообщением — для рабочего чата или письма участникам
 function followUp(p) {
@@ -459,7 +474,7 @@ $("#r-copy").addEventListener("click", async () => {
 const htmlFile = () => state.result.files.find(f => f.endsWith(".html")) ?? state.result.dir;
 $("#r-open").addEventListener("click", () => pk.open(htmlFile()));
 $("#r-folder").addEventListener("click", () => pk.open(state.result.dir));
-for (const [id, target] of [["#r-b24", "bitrix24"], ["#r-yg", "yougile"], ["#r-tg", "telegram"]]) $(id).addEventListener("click", async () => {
+for (const [id, target] of SEND) $(id).addEventListener("click", async () => {
   if ($(id).disabled) return;
   $(id).disabled = true; // повторный клик не создаёт задачи дважды
   try {
@@ -501,14 +516,18 @@ async function loadTasks() {
 function renderTasks() {
   const today = new Date().toISOString().slice(0, 10), week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   const list = $("#t-mine").checked ? allTasks.filter(t => !t.owner || !t.due) : allTasks;
-  $("#t-all").textContent = allTasks.length;
+  $("#t-all").textContent = allTasks.filter(t => !t.done).length;
   $("#t-week").textContent = allTasks.filter(t => t.due && t.due >= today && t.due <= week).length;
   $("#t-review").textContent = allTasks.filter(t => t.review).length;
-  $("#t-table").innerHTML = list.length ? `<tr><th>Задача</th><th>Ответственный</th><th>Срок</th><th>Встреча</th></tr>${list.slice(0, 500).map(t => {
-    const cls = t.due && t.due < today ? "overdue" : t.due && t.due <= week ? "due-soon" : "";
-    return `<tr data-file="${esc(t.file)}"><td>${esc(t.text)}${t.review ? '<div class="review">● проверить по записи</div>' : ""}</td><td>${esc(t.owner || "—")}</td><td class="${cls}">${t.due ? ruDate(t.due) : esc(t.dueText || "—")}</td><td>${esc(t.meeting)}<br><span class="note">${ruDate(t.date)}</span></td></tr>`;
+  $("#t-table").innerHTML = list.length ? `<tr><th></th><th>Задача</th><th>Ответственный</th><th>Срок</th><th>Встреча</th></tr>${list.slice(0, 500).map(t => {
+    const cls = t.done ? "" : t.due && t.due < today ? "overdue" : t.due && t.due <= week ? "due-soon" : "";
+    return `<tr data-file="${esc(t.file)}" class="${t.done ? "done" : ""}"><td><input type="checkbox" class="t-done" data-id="${esc(t.id)}" data-i="${t.index}" ${t.done ? "checked" : ""} aria-label="Выполнено"></td><td>${esc(t.text)}${t.review ? '<div class="review">● проверить по записи</div>' : ""}</td><td>${esc(t.owner || "—")}</td><td class="${cls}">${t.due ? ruDate(t.due) : esc(t.dueText || "—")}</td><td>${esc(t.meeting)}<br><span class="note">${ruDate(t.date)}${t.series ? " · " + esc(t.series) : ""}</span></td></tr>`;
   }).join("")}` : `<tr><td>Задач пока нет — они появятся после первого протокола.</td></tr>`;
-  $$("#t-table tr[data-file]").forEach(tr => tr.addEventListener("click", () => pk.open(tr.dataset.file)));
+  $$("#t-table tr[data-file]").forEach(tr => tr.addEventListener("click", e => { if (!e.target.classList.contains("t-done")) pk.open(tr.dataset.file); }));
+  $$(".t-done").forEach(cb => cb.addEventListener("change", async () => {
+    try { await pk.core("taskDone", { id: cb.dataset.id, index: Number(cb.dataset.i), done: cb.checked }); const t = allTasks.find(x => x.id === cb.dataset.id && x.index === Number(cb.dataset.i)); if (t) t.done = cb.checked; renderTasks(); }
+    catch (e) { cb.checked = !cb.checked; toast("Не удалось отметить: " + e.message, "err"); }
+  }));
 }
 $("#t-mine").addEventListener("change", renderTasks);
 
@@ -526,12 +545,29 @@ function fillSettings() {
     else el.value = Array.isArray(v) ? v.join(",") : v ?? "";
     if (el.type === "password") el.placeholder = set[el.dataset.k] ? "сохранён · введите новый, чтобы заменить" : el.dataset.ph ?? (el.dataset.ph = el.placeholder);
   }
-  for (const [svc, key] of [["bitrix24", "bitrix24.webhook"], ["yougile", "yougile.key"], ["telegram", "telegram.token"]]) {
+  for (const [, svc, key] of SEND) {
+    const on = key === "obsidian.vault" ? !!get(state.config, key) : !!set[key];
     const st = $(`[data-st="${svc}"]`);
-    st.textContent = set[key] ? "настроено" : "не подключено";
-    st.classList.toggle("on", !!set[key]);
-    $(`[data-clear="${key}"]`).hidden = !set[key];
+    st.textContent = on ? "настроено" : "не подключено";
+    st.classList.toggle("on", on);
+    const clr = $(`[data-clear="${key}"]`);
+    if (clr) clr.hidden = !on;
   }
+  loadVoices();
+}
+$("#ob-pick").addEventListener("click", async () => { const d = await pk.pickDir(); if (d) $("#ob-vault").value = d; });
+// Знакомые голоса: список и «забыть»
+async function loadVoices() {
+  const box = $("#voices");
+  let vs = [];
+  try { vs = await pk.core("voices"); } catch { /* нет файла */ }
+  box.innerHTML = vs.length ? `<p class="note">Запомнено голосов: ${vs.length}</p><div class="chips">${vs.map(v => `<span class="chip">${esc(v.name)} <button class="link" data-forget="${esc(v.name)}" aria-label="Забыть голос ${esc(v.name)}">✕</button></span>`).join("")}</div><button class="link" id="forget-all">Забыть все голоса</button>` : "";
+  $$("[data-forget]").forEach(b => b.addEventListener("click", async () => { await pk.core("forgetVoice", { name: b.dataset.forget }); loadVoices(); }));
+  $("#forget-all")?.addEventListener("click", async e => {
+    const b = e.currentTarget; // второе нажатие подтверждает — без системных окон
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Нажмите ещё раз, чтобы удалить все голоса"; return; }
+    await pk.core("forgetAllVoices"); loadVoices();
+  });
 }
 $("#pickdir").addEventListener("click", async () => { const d = await pk.pickDir(); if (d) $("#outdir").value = d; });
 function collect() {

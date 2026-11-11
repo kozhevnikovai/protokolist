@@ -1,18 +1,26 @@
 // Текстовые форматы: Markdown-протокол, стенограмма TXT и SRT, календарь .ics с задачами.
 import { getTemplate } from "../protocol/templates.js";
 import { fmtTime, speakerLabel, transcriptText } from "../transcribe.js";
-import type { Analytics, Protocol, Transcript } from "../types.js";
+import type { Analytics, CarriedTask, Protocol, Transcript } from "../types.js";
 
-export interface Meeting { transcript: Transcript; protocol?: Protocol; analytics?: Analytics }
+export interface Meeting {
+  transcript: Transcript; protocol?: Protocol; analytics?: Analytics;
+  /** Серия встреч: «Планёрка отдела продаж», «1:1 с Анной» */
+  series?: string;
+  /** Задачи с прошлой встречи серии */
+  previous?: { title: string; date: string; tasks: CarriedTask[] };
+}
 
 const ruDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; };
+export const CARRY_STATUS = { done: "выполнено", discussed: "обсуждали", open: "не выполнено" } as const;
+export const carryTitle = (m: Meeting) => `С прошлой встречи (${ruDate(m.previous!.date)})`;
 export const tc = (t: number | null) => (t === null ? "⚠ проверить" : fmtTime(t));
 
 export function toMarkdown(m: Meeting): string {
   const { transcript: tr, protocol: p, analytics: a } = m;
   const L: string[] = [];
   L.push(`# ${p?.title ?? "Стенограмма встречи"}`, "");
-  L.push(`**Дата:** ${ruDate(tr.date)} · **Длительность:** ${fmtTime(tr.duration)} · **Участники:** ${tr.speakers.map(s => s.label).join(", ")}`, "");
+  L.push(`**Дата:** ${ruDate(tr.date)}${m.series ? ` · **Серия:** ${m.series}` : ""} · **Длительность:** ${fmtTime(tr.duration)} · **Участники:** ${tr.speakers.map(s => s.label).join(", ")}`, "");
   if (p) {
     if (p.meta.warnings?.length) L.push(...p.meta.warnings.map(w => `> ⚠ ${w}`), "");
     if (p.summary) L.push("## Кратко", "", p.summary, "");
@@ -32,6 +40,7 @@ export function toMarkdown(m: Meeting): string {
       L.push("## Ход обсуждения", "");
       for (const t of p.topics) L.push(`### ${t.title}`, t.speakers.length ? `_${t.speakers.join(", ")}_` : "", ...t.points.map(x => `- ${x}`), "");
     }
+    if (m.previous?.tasks.length) L.push(`## ${carryTitle(m)}`, "", ...m.previous.tasks.map(t => `- ${t.status === "done" ? "✓" : t.status === "discussed" ? "↻" : "○"} ${t.text}${t.owner ? ` — ${t.owner}` : ""} · ${CARRY_STATUS[t.status]}${t.at !== null ? ` \`${fmtTime(t.at)}\`` : ""}`), "");
     if (p.openQuestions.length) L.push("## Открытые вопросы", "", ...p.openQuestions.map(x => `- ${x}`), "");
     if (p.missedAgenda.length) L.push("## Не обсудили из повестки", "", ...p.missedAgenda.map(x => `- ${x}`), "");
   }

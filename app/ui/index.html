@@ -9,7 +9,7 @@
 <body>
 <aside>
   <div class="brand"><img src="icon.png" width="36" height="36" alt="">
-    <div><b>Протоколист</b><span id="ver">v1.1.0</span></div></div>
+    <div><b>Протоколист</b><span id="ver">v1.2.0</span></div></div>
   <nav>
     <button data-view="record" class="on"><span class="mono">01</span>Запись</button>
     <button data-view="file"><span class="mono">02</span>Файл</button>
@@ -83,6 +83,8 @@
       <div class="grid2">
         <label>Шаблон<select id="tpl"></select></label>
         <label>Повестка (необязательно, по пункту в строке)<textarea id="agenda" rows="3" placeholder="Релиз приложения&#10;Найм дизайнера"></textarea></label>
+        <label>Серия встреч (необязательно)<input id="series" list="series-list" maxlength="80" autocomplete="off" placeholder="Планёрка отдела продаж"><datalist id="series-list"></datalist></label>
+        <p class="note">Для регулярных встреч: в протокол попадут задачи с прошлой встречи серии — что выполнено, что обсуждали, что зависло.</p>
       </div>
       <label class="check"><input type="checkbox" id="keep" checked> Сохранить запись рядом с протоколом (тайм-коды проигрываются)</label>
       <div class="row"><button class="primary" id="make">Составить протокол</button><button class="ghost" id="only-tr">Только стенограмма</button></div>
@@ -94,6 +96,7 @@
     <h1 id="r-title"></h1>
     <p class="lead" id="r-summary"></p>
     <div class="stats" id="r-stats"></div>
+    <p class="note" id="r-prev" hidden></p>
     <div id="r-tasks"></div>
     <div class="row wrap">
       <button class="primary" id="r-open">Открыть протокол</button>
@@ -101,6 +104,10 @@
       <button class="ghost" id="r-b24" hidden>→ Битрикс24</button>
       <button class="ghost" id="r-yg" hidden>→ YouGile</button>
       <button class="ghost" id="r-tg" hidden>→ Telegram</button>
+      <button class="ghost" id="r-kt" hidden>→ Kaiten</button>
+      <button class="ghost" id="r-yt" hidden>→ Яндекс Трекер</button>
+      <button class="ghost" id="r-pc" hidden>→ Пачка</button>
+      <button class="ghost" id="r-ob" hidden>→ Obsidian</button>
     </div>
     <p class="note" id="r-note"></p>
   </section>
@@ -128,6 +135,9 @@
     <label class="check"><input type="checkbox" data-k="offline"> Строгий офлайн — запретить любую отправку данных (интеграции и облачная модель отключены)</label>
     <label class="check"><input type="checkbox" data-k="maskOnSend"> Маскировать телефоны, почту, ИНН, номера карт при отправке в интеграции</label>
     <label class="check"><input type="checkbox" data-k="deleteAudio"> Удалять запись после расшифровки — хранить только текст</label>
+    <label class="check"><input type="checkbox" data-k="voices"> Знакомые голоса — запоминать подписанных участников и узнавать их на следующих встречах</label>
+    <p class="note">Хранится только «отпечаток» голоса (набор чисел, не запись) в папке Протоколиста на этом компьютере. Голос — биометрические данные: включайте, если участники согласны (152-ФЗ, ст. 11).</p>
+    <div id="voices"></div>
     <h2><span class="n">02</span>Протокол</h2>
     <div class="grid2">
       <label>Шаблон по умолчанию<select data-k="template" id="tpl-def"></select></label>
@@ -182,6 +192,54 @@
         <div class="row"><button class="ghost" data-check="telegram">Проверить подключение</button><button class="link" data-clear="telegram.token">Отключить</button></div>
         <p class="note" data-res="telegram"></p>
       </div>
+      <div class="card" data-svc="kaiten">
+        <h3>Kaiten <span class="status" data-st="kaiten"></span></h3>
+        <p>Создаёт карточки задач на доске: текст, срок, ответственный и цитата — в описании.</p>
+        <details><summary>Где взять ключ и ID — 4 шага</summary><ol>
+          <li>Kaiten → аватар → «Профиль» → «API-ключи» → «Создать».</li>
+          <li>Откройте доску: в адресе …/boards/<b>число</b> — это ID доски.</li>
+          <li>ID колонки — в меню колонки «Скопировать ссылку» (последнее число) или спросите администратора.</li>
+          <li>Вставьте адрес, ключ и ID и нажмите «Проверить».</li></ol></details>
+        <label>Адрес<input data-k="kaiten.domain" autocomplete="off" placeholder="company.kaiten.ru"></label>
+        <label>API-ключ<input data-k="kaiten.token" type="password" autocomplete="off"></label>
+        <div class="grid2"><label>ID доски<input data-k="kaiten.boardId" autocomplete="off"></label><label>ID колонки<input data-k="kaiten.columnId" autocomplete="off"></label></div>
+        <div class="row"><button class="ghost" data-check="kaiten">Проверить подключение</button><button class="link" data-clear="kaiten.token">Отключить</button></div>
+        <p class="note" data-res="kaiten"></p>
+      </div>
+      <div class="card" data-svc="tracker">
+        <h3>Яндекс Трекер <span class="status" data-st="tracker"></span></h3>
+        <p>Создаёт задачи в очереди со сроком; ответственный со слов и цитата — в описании.</p>
+        <details><summary>Где взять токен и ID организации — 4 шага</summary><ol>
+          <li>Получите OAuth-токен с правами Трекера (oauth.yandex.ru, приложение с доступом «Чтение и запись в трекер»).</li>
+          <li>ID организации: Трекер → «Администрирование» → «Организации».</li>
+          <li>Отметьте «Яндекс Cloud», если организация в Cloud, а не в Яндекс 360.</li>
+          <li>Ключ очереди — латиницей из адреса очереди (например, SALES).</li></ol></details>
+        <label>OAuth-токен<input data-k="tracker.token" type="password" autocomplete="off"></label>
+        <div class="grid2"><label>ID организации<input data-k="tracker.orgId" autocomplete="off"></label><label>Очередь<input data-k="tracker.queue" autocomplete="off" placeholder="SALES"></label></div>
+        <label class="check"><input type="checkbox" data-k="tracker.cloud"> Организация в Яндекс Cloud</label>
+        <div class="row"><button class="ghost" data-check="tracker">Проверить подключение</button><button class="link" data-clear="tracker.token">Отключить</button></div>
+        <p class="note" data-res="tracker"></p>
+      </div>
+      <div class="card" data-svc="pachca">
+        <h3>Пачка <span class="status" data-st="pachca"></span></h3>
+        <p>Присылает краткий протокол — решения и задачи — в беседу команды.</p>
+        <details><summary>Как подключить — 3 шага</summary><ol>
+          <li>Пачка → «Автоматизации» → «Интеграции» → «API» — скопируйте токен доступа.</li>
+          <li>Откройте беседу: число в конце адреса — ID чата. Добавьте в неё бота, если токен ботовый.</li>
+          <li>Вставьте токен и ID и нажмите «Проверить».</li></ol></details>
+        <label>Токен<input data-k="pachca.token" type="password" autocomplete="off"></label>
+        <label>ID чата<input data-k="pachca.chatId" autocomplete="off"></label>
+        <div class="row"><button class="ghost" data-check="pachca">Проверить подключение</button><button class="link" data-clear="pachca.token">Отключить</button></div>
+        <p class="note" data-res="pachca"></p>
+      </div>
+      <div class="card" data-svc="obsidian">
+        <h3>Obsidian <span class="status" data-st="obsidian"></span></h3>
+        <p>Сохраняет заметку встречи в ваше хранилище: решения, задачи с датами (формат плагина Tasks), ссылка на прошлую встречу серии. Без интернета.</p>
+        <label>Папка хранилища<span class="inline"><input data-k="obsidian.vault" id="ob-vault" autocomplete="off"><button class="ghost" id="ob-pick">Обзор</button></span></label>
+        <label>Подпапка<input data-k="obsidian.folder" autocomplete="off" placeholder="Встречи"></label>
+        <div class="row"><button class="ghost" data-check="obsidian">Проверить</button></div>
+        <p class="note" data-res="obsidian"></p>
+      </div>
     </div>
     <p class="note">Ключи хранятся на этом компьютере в зашифрованном виде (средствами Windows или macOS) и не показываются после сохранения.</p>
     <h2><span class="n">05</span>Модель для протокола</h2>
@@ -205,9 +263,9 @@
     <div class="cards soon">
       <div class="card"><h3>Общий архив команды <span class="status">скоро</span></h3><p>Протоколы всех сотрудников в одном месте, поиск «что решили про бюджет» по всей компании, права доступа.</p></div>
       <div class="card"><h3>Контроль поручений <span class="status">скоро</span></h3><p>Статусы задач, напоминания о сроках в Telegram, сводка «что не сделано с прошлой планёрки».</p></div>
-      <div class="card"><h3>Серии встреч <span class="status">скоро</span></h3><p>Еженедельные планёрки и 1:1 связываются в цепочку: что изменилось, какие вопросы тянутся месяцами.</p></div>
-      <div class="card"><h3>Знакомые голоса <span class="status">скоро</span></h3><p>Участники подписываются сами: один раз назвали — дальше Протоколист узнаёт по голосу.</p></div>
-      <div class="card"><h3>Больше подключений <span class="status">скоро</span></h3><p>amoCRM, Kaiten, Яндекс Трекер, календарь: задачи и итоги встречи сразу там, где работает команда.</p></div>
+      <div class="card"><h3>Серии встреч для команды <span class="status">скоро</span></h3><p>Цепочки планёрок и 1:1 общие для всех участников: статусы задач видны каждому, вопросы, которые тянутся месяцами, — в отчёте руководителю.</p></div>
+      <div class="card"><h3>Общая база голосов <span class="status">скоро</span></h3><p>Сотрудник подписывается один раз — его узнают на встречах у всех коллег.</p></div>
+      <div class="card"><h3>Больше подключений <span class="status">скоро</span></h3><p>amoCRM, календарь: задачи и итоги встречи сразу там, где работает команда.</p></div>
       <div class="card"><h3>Длинные встречи и субтитры <span class="status">скоро</span></h3><p>Разбор многочасовых записей по частям, субтитры во время встречи.</p></div>
     </div>
     <div class="row wrap"><button class="primary" id="soon-want">Хочу ранний доступ</button><span class="note">Откроется страница на GitHub: напишите, что вам важнее, — это влияет на порядок разработки.</span></div>

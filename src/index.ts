@@ -11,7 +11,10 @@ export { toMarkdown, toSrt, toTxt, toIcs, type Meeting } from "./export/text.js"
 export { toHtml } from "./export/html.js";
 export { toDocx } from "./export/docx.js";
 export { sendToBitrix24, sendToYouGile, sendToTelegram, checkBitrix24, checkYouGile, checkTelegram } from "./integrations/index.js";
-export { run, finish, FORMATS, type RunOptions, type RunResult } from "./pipeline.js";
+export { sendToKaiten, sendToTracker, sendToPachca, saveToObsidian, toObsidian, checkKaiten, checkTracker, checkPachca, checkObsidian } from "./integrations/more.js";
+export { listVoices, learnVoices, matchVoices, forgetVoice, forgetAllVoices, type Voice } from "./voices.js";
+export { listSeries, previousMeeting, carryOver, setTaskDone, findMention } from "./series.js";
+export { run, finish, deliver, FORMATS, type RunOptions, type RunResult } from "./pipeline.js";
 export { loadConfig, saveConfig, rawConfig, configFile, setSecrets, SECRET_KEYS, getPath, setPath, type Config } from "./config.js";
 export { download, missing, plan, totalSize, PACKS, homeDir, modelsDir, selectLlm, LLM_MODELS } from "./models.js";
 export { detectHardware, recommend } from "@kozhevnikovai/local-ai";

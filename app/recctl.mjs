@@ -66,3 +66,17 @@ export function toggleAction(st) {
   if (st.busy) return "none";
   return "start";
 }
+
+// Подсказка о начале встречи на macOS: список процессов (ps -axco comm) + занят ли микрофон другим приложением
+const MAC_APPS = [[/^CptHost$/, "Zoom", true], [/^zoom\.us$/i, "Zoom"], [/телемост|telemost/i, "Яндекс Телемост"], [/толк|ktalk|kontur/i, "Контур.Толк"], [/teams/i, "Microsoft Teams"], [/^Яндекс Браузер$|^Yandex$/i, "Яндекс Браузер"], [/^Google Chrome$/, "Google Chrome"], [/^Safari$/, "Safari"], [/^Telegram$/, "Telegram"], [/^Skype$/, "Skype"], [/vk|sferum/i, "VK Звонки"]];
+/** Звонок есть, но приложение не определить */
+export const CALL = "звонок";
+export function macMeeting(procs, micBusy) {
+  const names = procs.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const sure = MAC_APPS.find(([re, , always]) => always && names.some(n => re.test(n)));
+  if (sure) return sure[1];
+  if (!micBusy) return "";
+  // несколько кандидатов (браузер открыт почти всегда) — не гадаем, какое из них
+  const hits = [...new Set(MAC_APPS.filter(([re]) => names.some(n => re.test(n))).map(x => x[1]))];
+  return hits.length === 1 ? hits[0] : CALL;
+}

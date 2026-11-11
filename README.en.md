@@ -13,12 +13,12 @@ Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meeti
 - **Verifiable privacy.** A "Network: 0 bytes" counter in the window; strict offline mode is on by default. Data leaves the machine only when you press "→ Bitrix24" or enable a cloud model.
 - **Every action item is backed by a quote and a timecode** — click to play the recording from that moment. Items the model couldn't ground in the transcript are flagged "verify" instead of being presented as fact.
 - **"Me" is never confused**: microphone and meeting audio are recorded as separate tracks; other participants are separated by voice; speaker echo is filtered.
-- **Spoken deadlines become dates** ("by Friday", "in two weeks") and go to calendar (.ics), Bitrix24 and YouGile.
+- **Spoken deadlines become dates** ("by Friday", "in two weeks") and go to calendar (.ics), Bitrix24, YouGile, Kaiten and Yandex Tracker.
 - **Recording is always visible**: a tray icon and an always-on-top "Recording" indicator; start/stop from any app with Ctrl+Alt+R (⌘⌥R on Mac).
 - **Official minutes per Russian standard GOST R 7.0.97-2016** in DOCX.
 - **Russian ASR with GigaAM v3** (Sber, MIT): 3.7% WER and 98% speaker accuracy on the test recording, 8–9× faster than real time on a CPU.
 
-Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Telegram (PII masked before sending). Local search across all meetings.
+Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Kaiten, Yandex Tracker, Telegram, Pachca, Obsidian notes (PII masked before sending). Known voices (opt-in): a participant named once is recognized in later meetings. Meeting series: the protocol lists last meeting's tasks with status. Local search across all meetings.
 
 ## Install
 

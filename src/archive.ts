@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Meeting } from "./export/text.js";
 import { fmtTime, speakerLabel } from "./transcribe.js";
 
-export interface ArchiveItem { id: string; dir: string; date: string; title: string; tasks: number; duration: number; /** Что открывать: протокол, стенограмма или папка */ file: string }
+export interface ArchiveItem { id: string; dir: string; date: string; title: string; series?: string; tasks: number; duration: number; /** Что открывать: протокол, стенограмма или папка */ file: string }
 
 const mainFile = (dir: string) => ["протокол.html", "стенограмма.html"].map(f => join(dir, f)).find(existsSync) ?? dir;
 
@@ -12,7 +12,7 @@ export function listMeetings(root: string): ArchiveItem[] {
   if (!existsSync(root)) return [];
   return readdirSync(root).map(name => join(root, name)).filter(d => existsSync(join(d, "встреча.json")) && statSync(d).isDirectory()).map(dir => {
     const m = load(dir);
-    return { id: dir.split(/[\\/]/).pop()!, dir, date: m.transcript.date, title: m.protocol?.title ?? m.transcript.source, tasks: m.protocol?.tasks.length ?? 0, duration: m.transcript.duration, file: mainFile(dir) };
+    return { id: dir.split(/[\\/]/).pop()!, dir, date: m.transcript.date, title: m.protocol?.title ?? m.transcript.source, ...(m.series ? { series: m.series } : {}), tasks: m.protocol?.tasks.length ?? 0, duration: m.transcript.duration, file: mainFile(dir) };
   }).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
 }
 
@@ -21,7 +21,7 @@ export const load = (dir: string): Meeting => JSON.parse(readFileSync(join(dir, 
 export interface Hit { id: string; date: string; title: string; where: string; at: number | null; text: string; file: string }
 
 /** Поиск по словам во всех протоколах и стенограммах: решения и задачи выше реплик */
-export interface TaskItem { text: string; owner: string; due: string | null; dueText: string | null; review: boolean; meeting: string; date: string; file: string }
+export interface TaskItem { text: string; owner: string; due: string | null; dueText: string | null; review: boolean; done: boolean; meeting: string; series?: string; id: string; index: number; date: string; file: string }
 
 /** Все задачи из протоколов — сводная вкладка «Задачи»: сначала с ближайшим сроком */
 export function listTasks(root: string): TaskItem[] {
@@ -29,9 +29,9 @@ export function listTasks(root: string): TaskItem[] {
   for (const m of listMeetings(root)) {
     let tasks: any[] = [];
     try { tasks = load(m.dir).protocol?.tasks ?? []; } catch { continue; }
-    for (const t of tasks) out.push({ text: t.text, owner: t.owner ?? "", due: t.due ?? null, dueText: t.dueText ?? null, review: !!t.review, meeting: m.title, date: m.date, file: m.file });
+    tasks.forEach((t, index) => out.push({ text: t.text, owner: t.owner ?? "", due: t.due ?? null, dueText: t.dueText ?? null, review: !!t.review, done: !!t.done, meeting: m.title, ...(m.series ? { series: m.series } : {}), id: m.id, index, date: m.date, file: m.file }));
   }
-  return out.sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999") || b.date.localeCompare(a.date));
+  return out.sort((a, b) => Number(a.done) - Number(b.done) || (a.due ?? "9999").localeCompare(b.due ?? "9999") || b.date.localeCompare(a.date));
 }
 
 export function searchMeetings(root: string, query: string, limit = 30): Hit[] {
