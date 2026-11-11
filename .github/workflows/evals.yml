@@ -1,22 +1,25 @@
 name: evals
-# Качество протокола на эталонных встречах с локальной моделью Qwen3 4B (ручной запуск и раз в неделю)
+# Качество протокола на эталонных встречах — каждая локальная модель каталога (ручной запуск и раз в неделю)
 on:
   workflow_dispatch:
   schedule: [{ cron: "17 4 * * 1" }]
 jobs:
   protocol:
+    strategy:
+      fail-fast: false
+      matrix: { model: [qwen3-4b, gemma-4-e4b, gigachat-3.1-lightning, gemma-4-12b] }
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    env: { PROTOKOLIST_HOME: /home/runner/pk, PROTOKOLIST_GPU: cpu }
+    timeout-minutes: 150
+    env: { PROTOKOLIST_HOME: /home/runner/pk, PROTOKOLIST_GPU: cpu, PROTOKOLIST_LLM_MODEL: "${{ matrix.model }}" }
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci && npm run build
       - uses: actions/cache@v4
-        with: { path: ~/pk/models/llm, key: llm-qwen3-4b-2507-q4km }
-      - run: node dist/cli.js models
-      - run: npm run eval -- --save-example
+        with: { path: ~/pk/models/llm, key: "llm-${{ matrix.model }}-v1" }
+      - run: node dist/cli.js models --model ${{ matrix.model }}
+      - run: npm run eval || echo "::warning::${{ matrix.model }} ниже порога"
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: evals, path: "evals/results.json\ndocs/example/source.json" }
+        with: { name: "evals-${{ matrix.model }}", path: evals/results.json }

@@ -22,13 +22,13 @@ Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DO
 
 ## Install
 
-- **App:** download the installer from the [latest release](https://github.com/kozhevnikovai/protokolist/releases/latest) (`.exe` for Windows, `.dmg` for macOS 14.2+). Builds are not code-signed yet: on Windows choose "More info → Run anyway"; on macOS use "System Settings → Privacy & Security → Open Anyway". Models (≈2.7 GB) download once on first launch.
+- **App:** download the installer from the [latest release](https://github.com/kozhevnikovai/protokolist/releases/latest) (`.exe` for Windows, `.dmg` for macOS 14.2+). Builds are not code-signed yet: on Windows choose "More info → Run anyway"; on macOS use "System Settings → Privacy & Security → Open Anyway". Models (≈3–7 GB depending on the chosen model) download once on first launch.
 - **Claude Desktop:** open the `.mcpb` from the release. Transcription runs locally, Claude writes the minutes, Protokolist verifies them against quotes.
 - **CLI** (Node.js 20+): `npx protokolist models`, then `npx protokolist meeting.m4a`.
 
 ## Models
 
-GigaAM v3 (MIT) via sherpa-onnx · Silero VAD (MIT) · CAM++ / 3D-Speaker (Apache-2.0) · Qwen3 4B Instruct 2507 (Apache-2.0) via node-llama-cpp.
+GigaAM v3 (MIT) via sherpa-onnx · Silero VAD (MIT) · CAM++ / 3D-Speaker (Apache-2.0) · a local LLM chosen by hardware — light Qwen3 4B Instruct / Gemma 4 E4B or strong GigaChat 3.1 Lightning / Gemma 4 12B (Apache-2.0 / MIT) via node-llama-cpp and the shared [local-ai](https://github.com/kozhevnikovai/local-ai) engine.
 
 ## Author
 

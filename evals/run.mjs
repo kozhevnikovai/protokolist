@@ -14,7 +14,7 @@ const all = (s, words) => words.every(w => low(s).includes(low(w)));
 
 const llm = await createLLM(process.env.EVAL_LLM_URL
   ? { provider: "openai", baseUrl: process.env.EVAL_LLM_URL, model: process.env.EVAL_LLM_MODEL, apiKey: process.env.EVAL_LLM_KEY }
-  : { provider: "local", gpu: process.env.PROTOKOLIST_GPU });
+  : { provider: "local", gpu: process.env.PROTOKOLIST_GPU, localModel: process.env.PROTOKOLIST_LLM_MODEL });
 console.log(`Модель: ${llm.name}\n`);
 const rows = [];
 for (const f of files) {

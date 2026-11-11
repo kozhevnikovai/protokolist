@@ -4,7 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { Command } from "commander";
 import { hitLine, listMeetings, searchMeetings } from "./archive.js";
 import { loadConfig, saveConfig, setPath } from "./config.js";
-import { download, missing, PACKS } from "./models.js";
+import { download, LLM_MODELS, missing, PACKS, selectLlm } from "./models.js";
+import { detectHardware, recommend } from "@kozhevnikovai/local-ai";
 import { FORMATS, run } from "./pipeline.js";
 import { TEMPLATES } from "./protocol/templates.js";
 import { fmtTime } from "./transcribe.js";
@@ -59,7 +60,17 @@ const program = new Command("protokolist")
     console.log(`Папка: ${r.dir}`);
   });
 
-program.command("models").description("скачать модели (≈2,7 ГБ, один раз)").option("--no-llm", "без языковой модели (только стенограммы или протокол через Claude)").action(async o => {
+program.command("models").description("скачать модели (один раз; языковая модель выбирается по компьютеру)")
+  .option("--no-llm", "без языковой модели (только стенограммы или протокол через Claude)")
+  .option("--model <id>", `языковая модель: ${LLM_MODELS.map(m => m.id).join(", ")}`)
+  .action(async o => {
+  let id = o.model ?? loadConfig().llm.localModel;
+  if (!id && o.llm !== false) {
+    const r = recommend(await detectHardware());
+    console.log(r.reason);
+    id = r.model.id;
+  }
+  if (id) { selectLlm(id); if (id !== loadConfig().llm.localModel) saveConfig({ llm: { localModel: selectLlm(id) } } as any); }
   const packs = o.llm === false ? ["asr", "speakers"] : Object.keys(PACKS);
   const need = missing(packs);
   if (!need.length) return console.log("Все модели на месте.");
