@@ -20,6 +20,6 @@ jobs:
         with: { path: ~/pk/models/llm, key: "llm-${{ matrix.model }}-v1" }
       - run: node dist/cli.js models --model ${{ matrix.model }}
       - run: npm run eval || echo "::warning::${{ matrix.model }} ниже порога"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with: { name: "evals-${{ matrix.model }}", path: evals/results.json }
