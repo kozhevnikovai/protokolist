@@ -2,12 +2,14 @@ name: evals
 # Качество протокола на эталонных встречах — каждая локальная модель каталога (ручной запуск и раз в неделю)
 on:
   workflow_dispatch:
+    inputs:
+      models: { description: "JSON-список id моделей (пусто — основной набор)", required: false, default: "" }
   schedule: [{ cron: "17 4 * * 1" }]
 jobs:
   protocol:
     strategy:
       fail-fast: false
-      matrix: { model: [qwen3-4b, gemma-4-e4b, gigachat-3.1-lightning, gemma-4-12b] }
+      matrix: { model: "${{ fromJSON(inputs.models || '[\"qwen3-4b\",\"gemma-4-e4b\",\"gigachat-3.1-lightning\",\"gemma-4-12b\"]') }}" }
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env: { PROTOKOLIST_HOME: /home/runner/pk, PROTOKOLIST_GPU: cpu, PROTOKOLIST_LLM_MODEL: "${{ matrix.model }}" }
