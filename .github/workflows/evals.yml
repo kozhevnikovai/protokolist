@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 150
     env: { PROTOKOLIST_HOME: /home/runner/pk, PROTOKOLIST_GPU: cpu, PROTOKOLIST_LLM_MODEL: "${{ matrix.model }}" }
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci && npm run build
