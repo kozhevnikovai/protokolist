@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build && npm test
@@ -44,7 +44,7 @@ jobs:
     env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with: { node-version: 22, registry-url: https://registry.npmjs.org }
       - run: npm ci && npm run build
       - name: npm publish (если задан NPM_TOKEN)

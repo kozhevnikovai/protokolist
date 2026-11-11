@@ -13,7 +13,7 @@ jobs:
     env: { PROTOKOLIST_HOME: /home/runner/pk, PROTOKOLIST_GPU: cpu, PROTOKOLIST_LLM_MODEL: "${{ matrix.model }}" }
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci && npm run build
       - uses: actions/cache@v4
