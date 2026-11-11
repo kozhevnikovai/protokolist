@@ -28,7 +28,7 @@ Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DO
 
 ## Models
 
-GigaAM v3 (MIT) via sherpa-onnx · Silero VAD (MIT) · CAM++ / 3D-Speaker (Apache-2.0) · a local LLM chosen by hardware — light Qwen3 4B Instruct / Gemma 4 E4B or strong GigaChat 3.1 Lightning / Gemma 4 12B (Apache-2.0 / MIT) via node-llama-cpp and the shared [local-ai](https://github.com/kozhevnikovai/local-ai) engine.
+GigaAM v3 (MIT) via sherpa-onnx · Silero VAD (MIT) · CAM++ / 3D-Speaker (Apache-2.0) · a local LLM chosen by hardware — light Qwen3 4B Instruct or strong Qwen3 14B (Apache-2.0), picked by evals out of 8 models, via node-llama-cpp and the shared [local-ai](https://github.com/kozhevnikovai/local-ai) engine.
 
 ## Author
 

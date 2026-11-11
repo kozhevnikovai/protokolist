@@ -153,7 +153,7 @@ describe("выбор языковой модели", () => {
     const { selectLlm } = await import("../src/models.js");
     expect(selectLlm("qwen3-4b")).toBe("qwen3-4b");
     expect(PACKS.llm.files[0].path).toBe("llm/qwen3-4b-instruct-2507-q4_k_m.gguf");
-    expect(selectLlm("../evil")).toBe("gigachat-3.1-lightning");
-    expect(PACKS.llm.files[0].path).toContain("GigaChat3.1");
+    expect(selectLlm("../evil")).toBe("qwen3-14b");
+    expect(PACKS.llm.files[0].path).toContain("Qwen3-14B");
   });
 });
