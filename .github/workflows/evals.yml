@@ -7,7 +7,7 @@ jobs:
   protocol:
     strategy:
       fail-fast: false
-      matrix: { model: [qwen3.5-4b, gemma-4-e4b, gigachat-3.1-lightning, qwen3.5-9b] }
+      matrix: { model: [qwen3-4b, gemma-4-e4b, gigachat-3.1-lightning, gemma-4-12b] }
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env: { PROTOKOLIST_HOME: /home/runner/pk, PROTOKOLIST_GPU: cpu, PROTOKOLIST_LLM_MODEL: "${{ matrix.model }}" }

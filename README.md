@@ -101,7 +101,7 @@ npx protokolist search бюджет          # поиск по всем встр
 | Распознавание речи | [GigaAM v3](https://github.com/salute-developers/GigaAM) (Сбер), ONNX через [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | MIT |
 | Поиск речи | Silero VAD | MIT |
 | Голоса спикеров | CAM++ ([3D-Speaker](https://github.com/modelscope/3D-Speaker)) | Apache-2.0 |
-| Протокол | На выбор по компьютеру: лёгкая [Qwen3.5 4B](https://huggingface.co/Qwen/Qwen3.5-4B) или [Gemma 4 E4B](https://huggingface.co/google/gemma-4-E4B-it), мощная [GigaChat 3.1 Lightning](https://huggingface.co/ai-sage/GigaChat3.1-10B-A1.8B) или [Qwen3.5 9B](https://huggingface.co/Qwen/Qwen3.5-9B); GGUF через [node-llama-cpp](https://github.com/withcatai/node-llama-cpp) и общий движок [local-ai](https://github.com/kozhevnikovai/local-ai) | Apache-2.0 / MIT |
+| Протокол | На выбор по компьютеру: лёгкая [Qwen3 4B Instruct](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507) или [Gemma 4 E4B](https://huggingface.co/google/gemma-4-E4B-it), мощная [GigaChat 3.1 Lightning](https://huggingface.co/ai-sage/GigaChat3.1-10B-A1.8B) или [Gemma 4 12B](https://huggingface.co/google/gemma-4-12b-it); GGUF через [node-llama-cpp](https://github.com/withcatai/node-llama-cpp) и общий движок [local-ai](https://github.com/kozhevnikovai/local-ai) | Apache-2.0 / MIT |
 
 ## Качество
 
