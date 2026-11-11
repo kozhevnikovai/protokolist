@@ -81,3 +81,6 @@ button{white-space:nowrap}
 .models .model.on{border-color:var(--acc)}.models .model.no{opacity:.75}
 .models .model b{font-weight:600}.models .model small{display:block;color:var(--pencil);font-size:13px;margin-top:2px}.models .model small.err{color:var(--bad)}
 .models input{margin-top:4px;accent-color:var(--acc)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px}
+tr.done td{color:var(--pencil);text-decoration:line-through}tr.done td:first-child{text-decoration:none}

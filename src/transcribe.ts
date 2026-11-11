@@ -8,6 +8,7 @@ import { channels as fileChannels, decode, RATE } from "./audio.js";
 import { applyGlossary, type GlossaryEntry } from "./glossary.js";
 import { missing, modelPath } from "./models.js";
 import type { Segment, Speaker, Transcript } from "./types.js";
+import { centroidsOf, matchVoices, type Voice } from "./voices.js";
 
 const require = createRequire(import.meta.url);
 
@@ -24,6 +25,8 @@ export interface TranscribeOptions {
   /** Имена спикеров: { s1: "Иван" } */
   names?: Record<string, string>;
   date?: string;
+  /** Знакомые голоса: узнанные спикеры подписываются сами */
+  voices?: Voice[];
   threads?: number;
   onProgress?: (stage: "decode" | "vad" | "speakers" | "asr", done: number, total: number) => void;
 }
@@ -180,6 +183,8 @@ export async function transcribe(file: string, o: TranscribeOptions = {}): Promi
   }
   mine.forEach(p => (p.speaker = "me"));
   const diarSeconds = (Date.now() - t0) / 1000;
+  const voices = centroidsOf(others);
+  const known = o.voices ? matchVoices(voices, o.voices) : {};
 
   // распознавание
   const t1 = Date.now();
@@ -212,13 +217,13 @@ export async function transcribe(file: string, o: TranscribeOptions = {}): Promi
   const talk = new Map<string, number>();
   for (const s of segments) talk.set(s.speaker, (talk.get(s.speaker) ?? 0) + s.end - s.start);
   const speakers: Speaker[] = [...talk.keys()].sort((a, b) => (a === "me" ? -1 : b === "me" ? 1 : a.localeCompare(b, "ru", { numeric: true })))
-    .map(id => ({ id, label: o.names?.[id] ?? (id === "me" ? "Я" : `Спикер ${id.slice(1)}`), talk: round(talk.get(id)!) }));
+    .map(id => ({ id, label: o.names?.[id] ?? known[id] ?? (id === "me" ? "Я" : `Спикер ${id.slice(1)}`), talk: round(talk.get(id)!), ...(known[id] && !o.names?.[id] ? { known: true } : {}) }));
 
   return {
     source: basename(file),
     date: o.date ?? new Date().toISOString().slice(0, 10),
     duration: round(duration),
-    speakers, segments,
+    speakers, segments, voices,
     stats: { asrSeconds: round(asrSeconds), diarSeconds: round(diarSeconds), rtf: round((asrSeconds + diarSeconds) / Math.max(duration, 1), 3), device: `CPU, ${n} потоков` },
   };
 }
@@ -227,7 +232,7 @@ const round = (x: number, d = 2) => Math.round(x * 10 ** d) / 10 ** d;
 
 /** Переименование спикеров после распознавания: { s1: "Иван Петров" } */
 export function renameSpeakers(t: Transcript, names: Record<string, string>): Transcript {
-  return { ...t, speakers: t.speakers.map(s => ({ ...s, label: names[s.id] ?? s.label })) };
+  return { ...t, speakers: t.speakers.map(s => (names[s.id] ? { ...s, label: names[s.id], known: undefined } : s)) };
 }
 
 export const speakerLabel = (t: Transcript, id: string) => t.speakers.find(s => s.id === id)?.label ?? id;

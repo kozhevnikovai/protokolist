@@ -3,7 +3,7 @@ import { AlignmentType, BorderStyle, Document, Packer, Paragraph, Table, TableCe
 import { getTemplate } from "../protocol/templates.js";
 import { fmtTime, speakerLabel } from "../transcribe.js";
 import type { Protocol } from "../types.js";
-import { type Meeting, tc } from "./text.js";
+import { CARRY_STATUS, carryTitle, type Meeting, tc } from "./text.js";
 
 const ruDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; };
 
@@ -62,6 +62,7 @@ function business(m: Meeting, p: Protocol, o: DocxOptions) {
   if (p.tasks.length) body.push(H("Задачи"), tasksTable(p), P("⚠ — проверить по записи.", { size: 18, color: "5C5C5C" }));
   for (const [k, items] of Object.entries(p.extra)) if (items.length) body.push(H(tpl.extraTitles[k] ?? k), ...list(items));
   if (p.topics.length) { body.push(H("Ход обсуждения")); for (const t of p.topics) body.push(P(t.title + (t.speakers.length ? ` (${t.speakers.join(", ")})` : ""), { bold: true }), ...list(t.points)); }
+  if (m.previous?.tasks.length) body.push(H(carryTitle(m)), ...list(m.previous.tasks.map(t => `${t.text}${t.owner ? ` — ${t.owner}` : ""}: ${CARRY_STATUS[t.status]}`)));
   if (p.openQuestions.length) body.push(H("Открытые вопросы"), ...list(p.openQuestions));
   if (p.missedAgenda.length) body.push(H("Не обсудили из повестки"), ...list(p.missedAgenda));
   if (o.withTranscript) body.push(...transcript(m));

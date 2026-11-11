@@ -10,6 +10,7 @@ import { FORMATS, run } from "./pipeline.js";
 import { TEMPLATES } from "./protocol/templates.js";
 import { fmtTime } from "./transcribe.js";
 import { VERSION } from "./version.js";
+import { listVoices } from "./voices.js";
 
 const STAGES: Record<string, string> = { decode: "Чтение аудио", vad: "Поиск речи", speakers: "Спикеры", asr: "Распознавание", protocol: "Протокол" };
 
@@ -37,7 +38,8 @@ const program = new Command("protokolist")
   .option("--mic <file>", "отдельная запись микрофона владельца")
   .option("--no-protocol", "только стенограмма")
   .option("--keep-audio", "положить запись рядом с протоколом (тайм-коды проигрываются)")
-  .option("--send <list>", "отправить: bitrix24,yougile,telegram (нужен выключенный офлайн-режим)")
+  .option("--send <list>", "отправить: bitrix24,yougile,telegram,kaiten,tracker,pachca (нужен выключенный офлайн-режим), obsidian (заметка, без сети)")
+  .option("--series <name>", "серия встреч: в протокол попадут задачи с прошлой встречи серии")
   .option("--gpu <type>", "auto, cpu, cuda, vulkan")
   .action(async (file: string | undefined, o) => {
     if (!file) return program.help();
@@ -49,7 +51,8 @@ const program = new Command("protokolist")
     const t0 = Date.now();
     const r = await run(file, {
       config, outDir: o.out, template: o.template, speakers: o.speakers, names: parseNames(o.names), agenda: parseAgenda(o.agenda),
-      formats: o.formats?.split(","), noProtocol: o.protocol === false, send: o.send?.split(","), keepAudio: o.keepAudio, micFile: o.mic, date: o.date,
+      formats: o.formats?.split(","), noProtocol: o.protocol === false, send: o.send?.split(","), keepAudio: o.keepAudio, micFile: o.mic, date: o.date, series: o.series,
+      voices: config.voices ? listVoices() : undefined,
       onProgress: (s, d, t) => bar(STAGES[s] ?? s, d, t),
     });
     const tr = r.meeting.transcript, p = r.meeting.protocol;

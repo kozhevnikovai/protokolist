@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { getTemplate } from "../protocol/templates.js";
 import { fmtTime, speakerLabel } from "../transcribe.js";
 import { VERSION } from "../version.js";
-import type { Meeting } from "./text.js";
+import { CARRY_STATUS, carryTitle, type Meeting } from "./text.js";
 
 const require = createRequire(import.meta.url);
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -45,6 +45,7 @@ button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 audio{width:100%;margin:8px 0}
 .foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--pencil)}
 .pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;background:var(--okbg);color:var(--ok);padding:2px 10px}.pill.cloud{background:var(--warnbg);color:var(--warn)}
+.st-done{color:var(--ok);font-weight:600}.st-open{color:var(--warn);font-weight:600}
 @media print{body{background:#fff}.tools,audio,button.b{display:none}.sheet{margin:0;padding:0}.card{box-shadow:none;break-inside:avoid}}
 @media (max-width:700px){.sheet{margin:0;padding:16px}.card{padding:16px}.bars div{grid-template-columns:100px 1fr 44px}}`;
 
@@ -66,6 +67,8 @@ export function toHtml(m: Meeting, o: HtmlOptions = {}): string {
     const tpl = getTemplate(p.template);
     for (const [k, items] of Object.entries(p.extra)) if (items.length) S.push(H(tpl.extraTitles[k] ?? k), `<ul>${items.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`);
     if (p.topics.length) S.push(H("Ход обсуждения"), p.topics.map(t => `<h3>${esc(t.title)}</h3>${t.speakers.length ? `<div class="meta">${esc(t.speakers.join(", "))}</div>` : ""}<ul>${t.points.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`).join(""));
+    if (m.previous?.tasks.length) S.push(H(carryTitle(m)), `<table><tr><th>Задача</th><th>Ответственный</th><th>Статус</th></tr>${m.previous.tasks.map(t =>
+      `<tr><td>${esc(t.text)}</td><td>${esc(t.owner || "—")}</td><td class="st-${t.status}">${CARRY_STATUS[t.status]}${t.at !== null ? ` ${T(t.at)}` : ""}</td></tr>`).join("")}</table>`);
     if (p.openQuestions.length) S.push(H("Открытые вопросы"), `<ul>${p.openQuestions.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`);
     if (p.missedAgenda.length) S.push(H("Не обсудили из повестки"), `<ul>${p.missedAgenda.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`);
   }

@@ -4,6 +4,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bitrix24Config, TelegramConfig, YouGileConfig } from "./integrations/index.js";
+import type { KaitenConfig, ObsidianConfig, PachcaConfig, TrackerConfig } from "./integrations/more.js";
 import { homeDir, selectLlm } from "./models.js";
 import type { LLMOptions } from "./protocol/llm.js";
 
@@ -28,6 +29,12 @@ export interface Config {
   bitrix24?: Bitrix24Config;
   yougile?: YouGileConfig;
   telegram?: TelegramConfig;
+  kaiten?: KaitenConfig;
+  tracker?: TrackerConfig;
+  pachca?: PachcaConfig;
+  obsidian?: ObsidianConfig;
+  /** Знакомые голоса: запоминать подписанных участников и узнавать их на следующих встречах (биометрия — с согласия участников) */
+  voices: boolean;
 }
 
 export function defaultOutputDir(): string {
@@ -37,15 +44,18 @@ export function defaultOutputDir(): string {
 
 export const DEFAULTS: Config = {
   template: "planerka", formats: ["html", "docx", "md"], offline: true, deleteAudio: false, maskOnSend: true,
-  llm: { provider: "local" }, glossary: "", hourlyRate: 0, outputDir: "", gost: {},
+  llm: { provider: "local" }, glossary: "", hourlyRate: 0, outputDir: "", gost: {}, voices: false,
 };
+
+/** Группы настроек подключений */
+const GROUPS = ["bitrix24", "yougile", "telegram", "kaiten", "tracker", "pachca", "obsidian"] as const;
 
 export const configFile = () => join(homeDir(), "config.json");
 const file = configFile;
 
 /** Поля с ключами и токенами */
-export const SECRET_KEYS = ["bitrix24.webhook", "yougile.key", "telegram.token", "llm.apiKey"] as const;
-const ENV: Record<string, string> = { "bitrix24.webhook": "PROTOKOLIST_BITRIX24_WEBHOOK", "yougile.key": "PROTOKOLIST_YOUGILE_KEY", "telegram.token": "PROTOKOLIST_TELEGRAM_TOKEN", "llm.apiKey": "PROTOKOLIST_LLM_KEY" };
+export const SECRET_KEYS = ["bitrix24.webhook", "yougile.key", "telegram.token", "llm.apiKey", "kaiten.token", "tracker.token", "pachca.token"] as const;
+const ENV: Record<string, string> = { "bitrix24.webhook": "PROTOKOLIST_BITRIX24_WEBHOOK", "yougile.key": "PROTOKOLIST_YOUGILE_KEY", "telegram.token": "PROTOKOLIST_TELEGRAM_TOKEN", "llm.apiKey": "PROTOKOLIST_LLM_KEY", "kaiten.token": "PROTOKOLIST_KAITEN_TOKEN", "tracker.token": "PROTOKOLIST_TRACKER_TOKEN", "pachca.token": "PROTOKOLIST_PACHCA_TOKEN" };
 let secrets: Record<string, string> = {};
 /** Расшифрованные ключи от главного процесса приложения (только в памяти) */
 export function setSecrets(s: Record<string, string> | undefined) { secrets = s ?? {}; }
@@ -71,7 +81,7 @@ export function loadConfig(): Config {
   try {
     const c = existsSync(file()) ? JSON.parse(readFileSync(file(), "utf8")) : {};
     selectLlm(c.llm?.localModel); // от выбранной модели зависят «каких файлов не хватает» и загрузка
-    return resolveSecrets({ ...DEFAULTS, ...c, llm: { ...DEFAULTS.llm, ...c.llm }, gost: { ...c.gost }, bitrix24: c.bitrix24 && { ...c.bitrix24 }, yougile: c.yougile && { ...c.yougile }, telegram: c.telegram && { ...c.telegram }, outputDir: c.outputDir || process.env.PROTOKOLIST_OUT || defaultOutputDir() });
+    return resolveSecrets({ ...DEFAULTS, ...c, llm: { ...DEFAULTS.llm, ...c.llm }, gost: { ...c.gost }, ...Object.fromEntries(GROUPS.map(g => [g, c[g] && { ...c[g] }])), outputDir: c.outputDir || process.env.PROTOKOLIST_OUT || defaultOutputDir() });
   } catch { return { ...DEFAULTS, outputDir: process.env.PROTOKOLIST_OUT || defaultOutputDir() }; }
 }
 
@@ -84,7 +94,7 @@ export function rawConfig(): any {
 export function saveConfig(c: Partial<Config>): Config {
   const raw = rawConfig();
   const next: any = { ...raw, ...c };
-  for (const g of ["llm", "gost", "bitrix24", "yougile", "telegram"] as const) if ((c as any)[g] && raw[g]) next[g] = { ...raw[g], ...(c as any)[g] };
+  for (const g of ["llm", "gost", ...GROUPS] as const) if ((c as any)[g] && raw[g]) next[g] = { ...raw[g], ...(c as any)[g] };
   for (const k of SECRET_KEYS) if (getPath(c, k) === undefined && getPath(raw, k) !== undefined) setPath(next, k, getPath(raw, k));
   if (typeof next.hourlyRate === "number" && (!Number.isFinite(next.hourlyRate) || next.hourlyRate < 0)) next.hourlyRate = 0;
   if (Array.isArray(next.formats)) next.formats = [...new Set(next.formats.map((f: string) => String(f).toLowerCase().trim()).filter((f: string) => ["html", "docx", "md", "json", "txt", "srt", "ics"].includes(f)))];

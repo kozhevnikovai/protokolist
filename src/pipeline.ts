@@ -9,6 +9,9 @@ import { toHtml } from "./export/html.js";
 import { type Meeting, toIcs, toMarkdown, toSrt, toTxt } from "./export/text.js";
 import { parseGlossary } from "./glossary.js";
 import { type SendResult, sendToBitrix24, sendToTelegram, sendToYouGile } from "./integrations/index.js";
+import { saveToObsidian, sendToKaiten, sendToPachca, sendToTracker } from "./integrations/more.js";
+import { carryOver, normSeries, previousMeeting } from "./series.js";
+import { learnVoices } from "./voices.js";
 import { netStats, setOffline } from "./net.js";
 import { mask } from "./privacy.js";
 import { buildProtocol } from "./protocol/build.js";
@@ -26,8 +29,10 @@ export interface RunOptions extends Omit<TranscribeOptions, "glossary" | "onProg
   formats?: string[];
   /** Только стенограмма, без протокола */
   noProtocol?: boolean;
-  /** Отправить в интеграции: "bitrix24" | "yougile" | "telegram" */
+  /** Отправить в интеграции: bitrix24, yougile, telegram, kaiten, tracker, pachca, obsidian */
   send?: string[];
+  /** Серия встреч: в протокол попадут задачи с прошлой встречи серии и их статус */
+  series?: string;
   /** Скопировать аудио к протоколу (для проигрывания по тайм-кодам) */
   keepAudio?: boolean;
   onProgress?: (stage: string, done: number, total: number) => void;
@@ -48,8 +53,18 @@ export async function run(file: string, o: RunOptions): Promise<RunResult> {
 export async function finish(tr: Transcript, audioFile: string | null, o: RunOptions): Promise<RunResult> {
   const c = o.config;
   setOffline(c.offline);
+  // знакомые голоса: запоминаем подписанных участников (только если включено), отпечатки в архив не пишем
+  if (c.voices && tr.voices && o.names) { try { learnVoices(tr.voices, o.names); } catch { /* не критично */ } }
+  const { voices: _v, ...clean } = tr;
+  tr = clean;
   if (o.names) tr = renameSpeakers(tr, o.names);
   const meeting: Meeting = { transcript: tr, analytics: analyze(tr, c.hourlyRate || undefined) };
+  const series = normSeries(o.series);
+  if (series) {
+    meeting.series = series;
+    const prev = previousMeeting(c.outputDir, series, tr.date, o.outDir);
+    if (prev) meeting.previous = { title: prev.meeting.protocol?.title ?? prev.meeting.transcript.source, date: prev.meeting.transcript.date, tasks: carryOver(prev.meeting, tr) };
+  }
   if (!o.noProtocol) {
     const llm = await createLLM(c.llm);
     try {
@@ -90,18 +105,27 @@ export async function finish(tr: Transcript, audioFile: string | null, o: RunOpt
   // встреча.json нужна всегда — по ней приложение и MCP-сервер показывают архив
   if (!formats.includes("json")) writeFileSync(join(dir, "встреча.json"), JSON.stringify(meeting, null, 2));
 
-  const sent: SendResult[] = [];
-  const p = meeting.protocol;
-  if (p && o.send?.length) {
-    const out = c.maskOnSend ? mask(p) : p;
-    if (o.send.includes("bitrix24") && c.bitrix24?.webhook) sent.push(await sendToBitrix24(out, c.bitrix24));
-    if (o.send.includes("yougile") && c.yougile?.key) sent.push(await sendToYouGile(out, c.yougile));
-    if (o.send.includes("telegram") && c.telegram?.token) {
-      const docx = files.find(f => f.endsWith(".docx"));
-      sent.push(await sendToTelegram(out, c.telegram, docx && !c.maskOnSend ? [{ name: basename(docx), data: readFileSync(docx), mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }] : []));
-    }
-  }
+  const sent = meeting.protocol && o.send?.length ? await deliver(meeting, files, o.send, c) : [];
   if (c.deleteAudio) for (const f of [audioFile, o.micFile]) if (f && existsSync(f)) { try { unlinkSync(f); } catch { /* файл занят — оставим */ } }
   return { dir, files, meeting, sent, netBytes: netStats().sentBytes };
 }
 
+/** Отправка в подключения. Сетевые — с маскированием (если включено) и только вне строгого офлайна; Obsidian — локальная заметка. */
+export async function deliver(meeting: Meeting, files: string[], targets: string[], c: Config): Promise<SendResult[]> {
+  const p = meeting.protocol;
+  if (!p) return [];
+  const out = c.maskOnSend ? mask(p) : p;
+  const sent: SendResult[] = [];
+  const want = (t: string) => targets.includes(t);
+  if (want("bitrix24") && c.bitrix24?.webhook) sent.push(await sendToBitrix24(out, c.bitrix24));
+  if (want("yougile") && c.yougile?.key) sent.push(await sendToYouGile(out, c.yougile));
+  if (want("kaiten") && c.kaiten?.token) sent.push(await sendToKaiten(out, c.kaiten));
+  if (want("tracker") && c.tracker?.token) sent.push(await sendToTracker(out, c.tracker));
+  if (want("pachca") && c.pachca?.token) sent.push(await sendToPachca(out, c.pachca));
+  if (want("telegram") && c.telegram?.token) {
+    const docx = files.find(f => f.endsWith(".docx"));
+    sent.push(await sendToTelegram(out, c.telegram, docx && !c.maskOnSend ? [{ name: basename(docx), data: readFileSync(docx), mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }] : []));
+  }
+  if (want("obsidian") && c.obsidian?.vault) sent.push(saveToObsidian(meeting, c.obsidian));
+  return sent;
+}

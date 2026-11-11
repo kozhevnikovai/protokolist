@@ -28,8 +28,8 @@ const methods = {
     return downloading;
   },
   async check({ target, cfg }) {
-    if (core.loadConfig().offline) return { ok: false, message: "Включён строгий офлайн — выключите его в «Приватности», чтобы проверить подключение" };
-    const fn = { bitrix24: core.checkBitrix24, yougile: core.checkYouGile, telegram: core.checkTelegram }[target];
+    if (target !== "obsidian" && core.loadConfig().offline) return { ok: false, message: "Включён строгий офлайн — выключите его в «Приватности», чтобы проверить подключение" };
+    const fn = { bitrix24: core.checkBitrix24, yougile: core.checkYouGile, telegram: core.checkTelegram, kaiten: core.checkKaiten, tracker: core.checkTracker, pachca: core.checkPachca, obsidian: core.checkObsidian }[target];
     return fn ? fn(cfg) : { ok: false, message: "Неизвестный сервис" };
   },
   saveConfig({ patch }) { return core.saveConfig(patch); },
@@ -42,26 +42,28 @@ const methods = {
   },
   async transcribe({ file, micFile, speakers }) {
     const c = core.loadConfig();
-    const tr = await core.transcribe(file, { micFile, speakers, glossary: core.parseGlossary(c.glossary), onProgress: progress });
+    const tr = await core.transcribe(file, { micFile, speakers, glossary: core.parseGlossary(c.glossary), voices: c.voices ? core.listVoices() : undefined, onProgress: progress });
     return tr;
   },
-  async protocol({ transcript, file, micFile, names, template, agenda, keepAudio, send, noProtocol }) {
+  async protocol({ transcript, file, micFile, names, template, agenda, keepAudio, send, noProtocol, series }) {
     const c = core.loadConfig();
-    const r = await core.finish(transcript, file, { config: c, micFile, names, template, agenda, keepAudio, send, noProtocol, onProgress: progress });
+    const r = await core.finish(transcript, file, { config: c, micFile, names, template, agenda, keepAudio, send, noProtocol, series, onProgress: progress });
     net();
-    return { dir: r.dir, files: r.files, sent: r.sent, protocol: r.meeting.protocol, netBytes: r.netBytes };
+    return { dir: r.dir, files: r.files, sent: r.sent, protocol: r.meeting.protocol, previous: r.meeting.previous, series: r.meeting.series, netBytes: r.netBytes };
   },
   async send({ dir, targets }) {
     const c = core.loadConfig();
-    const m = load(dir);
-    const p = c.maskOnSend ? core.mask(m.protocol) : m.protocol;
-    const out = [];
-    if (targets.includes("bitrix24") && c.bitrix24?.webhook) out.push(await core.sendToBitrix24(p, c.bitrix24));
-    if (targets.includes("yougile") && c.yougile?.key) out.push(await core.sendToYouGile(p, c.yougile));
-    if (targets.includes("telegram") && c.telegram?.token) out.push(await core.sendToTelegram(p, c.telegram));
+    const known = listMeetings(c.outputDir).find(m => m.dir === dir);
+    if (!known) throw new Error("Встреча не найдена в папке протоколов");
+    const out = await core.deliver(load(dir), [], targets, c);
     net();
     return out;
   },
+  series() { return core.listSeries(core.loadConfig().outputDir); },
+  taskDone({ id, index, done }) { return core.setTaskDone(core.loadConfig().outputDir, id, index, !!done); },
+  voices() { return core.listVoices().map(v => ({ name: v.name, n: v.n, updated: v.updated })); },
+  forgetVoice({ name }) { return core.forgetVoice(name); },
+  forgetAllVoices() { core.forgetAllVoices(); return true; },
   list() { return listMeetings(core.loadConfig().outputDir); },
   tasks() { return listTasks(core.loadConfig().outputDir); },
   search({ query }) { return searchMeetings(core.loadConfig().outputDir, query).map(h => ({ ...h, line: hitLine(h) })); },

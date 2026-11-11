@@ -1,6 +1,6 @@
 // Протоколист — настольное приложение (Electron). Главный процесс: окно, запись звука, фоновый обработчик.
 import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerSaveBlocker, safeStorage, screen, session, shell, Tray, utilityProcess } from "electron";
-import { fmtElapsed, HOTKEY, hotkeyLabel, indicatorBounds, isCommand, nextState, toggleAction, trayItems, trayTooltip } from "./recctl.mjs";
+import { CALL, fmtElapsed, HOTKEY, hotkeyLabel, indicatorBounds, isCommand, macMeeting, nextState, toggleAction, trayItems, trayTooltip } from "./recctl.mjs";
 import { execFile } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -18,7 +18,7 @@ app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(
 if (process.platform === "win32") app.setAppUserModelId("ai.kozhevnikov.protokolist");
 
 // ── Ключи интеграций: шифруются средствами ОС (DPAPI / связка ключей), расшифровываются только в памяти
-const SECRET_KEYS = ["bitrix24.webhook", "yougile.key", "telegram.token", "llm.apiKey"];
+const SECRET_KEYS = ["bitrix24.webhook", "yougile.key", "telegram.token", "llm.apiKey", "kaiten.token", "tracker.token", "pachca.token"];
 const getPath = (o, k) => k.split(".").reduce((a, x) => a?.[x], o);
 const home = () => process.env.PROTOKOLIST_HOME || (process.platform === "win32" && process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "Protokolist") : join(homedir(), ".protokolist"));
 const cfgFile = () => join(home(), "config.json");
@@ -115,24 +115,41 @@ function grantLoopback() {
 // Автостарт: Windows отмечает в реестре приложения, которые сейчас держат микрофон
 const MEETING_APPS = [[/zoom/i, "Zoom"], [/telemost/i, "Яндекс Телемост"], [/ktalk|kontur/i, "Контур.Толк"], [/teams/i, "Microsoft Teams"], [/(yandex|browser)\.exe/i, "Яндекс Браузер"], [/chrome/i, "Google Chrome"], [/msedge/i, "Edge"], [/telegram/i, "Telegram"], [/skype/i, "Skype"], [/vk|sferum/i, "VK Звонки"]];
 let lastNotified = "";
+function notifyMeeting(name) {
+  if (name && name !== lastNotified && !appState.recording) {
+    lastNotified = name;
+    win?.webContents.send("meeting", { app: name });
+    if (!win?.isFocused() && Notification.isSupported()) {
+      const n = new Notification({ title: "Протоколист", body: name === CALL ? "Похоже, начался звонок. Записать?" : `Похоже, началась встреча в ${name}. Записать?` });
+      n.on("click", () => { win?.show(); win?.webContents.send("meeting", { app: name, start: true }); });
+      n.show();
+    }
+  }
+  if (!name) lastNotified = "";
+}
+// macOS: микрофон занят другим приложением (AVFoundation через JXA) + какое приложение встреч запущено.
+// Zoom держит процесс CptHost только во время встречи — его узнаём и без микрофона.
+const MAC_MIC = "ObjC.import('AVFoundation');var d=$.AVCaptureDevice.devicesWithMediaType($.AVMediaTypeAudio),u=false;for(var i=0;i<d.count;i++){if(d.objectAtIndex(i).isInUseByAnotherApplication){u=true}}u";
 function watchMeetings() {
+  if (process.platform === "darwin") {
+    setInterval(() => {
+      if (appState.recording) return;
+      execFile("osascript", ["-l", "JavaScript", "-e", MAC_MIC], { timeout: 5000 }, (e1, mic) => {
+        execFile("ps", ["-axco", "comm"], { timeout: 5000 }, (e2, procs) => {
+          if (e2) return;
+          notifyMeeting(macMeeting(procs, !e1 && String(mic).trim() === "true"));
+        });
+      });
+    }, 10_000);
+    return;
+  }
   if (process.platform !== "win32") return;
   const key = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone\\NonPackaged";
   setInterval(() => execFile("reg", ["query", key, "/s"], { windowsHide: true }, (err, out) => {
     if (err) return;
     const active = out.split(/\r?\n\r?\n/).filter(b => /LastUsedTimeStop\s+REG_QWORD\s+0x0\b/.test(b)).map(b => b.split(/\r?\n/).find(l => l.startsWith("HKEY")) ?? "");
     const hit = active.map(k => MEETING_APPS.find(([re]) => re.test(k.split("#").pop() ?? ""))).find(Boolean);
-    const name = hit?.[1] ?? "";
-    if (name && name !== lastNotified) {
-      lastNotified = name;
-      win?.webContents.send("meeting", { app: name });
-      if (!win?.isFocused() && Notification.isSupported()) {
-        const n = new Notification({ title: "Протоколист", body: `Похоже, началась встреча в ${name}. Записать?` });
-        n.on("click", () => { win?.show(); win?.webContents.send("meeting", { app: name, start: true }); });
-        n.show();
-      }
-    }
-    if (!name) lastNotified = "";
+    notifyMeeting(hit?.[1] ?? "");
   }), 10_000);
 }
 
@@ -193,6 +210,7 @@ ipcMain.handle("check", (_e, target, cfg) => {
   if (target === "bitrix24") cfg.webhook = fill("bitrix24.webhook", cfg.webhook);
   if (target === "yougile") cfg.key = fill("yougile.key", cfg.key);
   if (target === "telegram") cfg.token = fill("telegram.token", cfg.token);
+  if (["kaiten", "tracker", "pachca"].includes(target)) cfg.token = fill(`${target}.token`, cfg.token);
   return call("check", { target, cfg });
 });
 ipcMain.handle("pick-file", async () => {

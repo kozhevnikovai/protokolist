@@ -14,7 +14,7 @@ export interface LLM {
 
 export interface LLMOptions {
   provider?: "local" | "openai";
-  /** Модель из каталога: qwen3-4b, gemma-4-e4b, gigachat-3.1-lightning, gemma-4-12b (local) */
+  /** Модель из каталога: qwen3-4b, qwen3-14b (local) */
   localModel?: string;
   /** Путь к своей GGUF-модели (local) */
   modelFile?: string;

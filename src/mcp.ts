@@ -65,6 +65,7 @@ export function buildServer(): McpServer {
       open_questions: z.array(z.string()).default([]),
       extra: z.record(z.string(), z.array(z.string())).default({}).describe("Поля шаблона, напр. для sales: needs, objections, budget, nextStep"),
       names: z.record(z.string(), z.string()).optional().describe('Переименовать спикеров: {"s1":"Иван"}'),
+      series: z.string().max(80).optional().describe("Серия встреч (например «Планёрка отдела продаж»): в протокол попадут задачи с прошлой встречи серии и их статус"),
     },
   }, async a => {
     const dir = resolveDir(a.id);
@@ -81,7 +82,7 @@ export function buildServer(): McpServer {
       meta: { model: "Claude (через MCP)", seconds: 0, generatedAt: new Date().toISOString() },
     };
     // finish без модели: протокол уже готов — подставляем его через noProtocol и дописываем
-    const r = await finish(tr, null, { config: loadConfig(), outDir: dir, names: a.names, noProtocol: true, formats: [] });
+    const r = await finish(tr, null, { config: loadConfig(), outDir: dir, names: a.names, noProtocol: true, formats: [], series: a.series });
     r.meeting.protocol = protocol;
     const { toHtml } = await import("./export/html.js");
     const { toDocx } = await import("./export/docx.js");
@@ -91,7 +92,9 @@ export function buildServer(): McpServer {
     writeFileSync(join(dir, "протокол.md"), toMarkdown(r.meeting));
     writeFileSync(join(dir, "протокол.docx"), await toDocx(r.meeting, { ...loadConfig().gost, withTranscript: true }));
     const bad = protocol.tasks.filter(t => t.review).map(t => t.text);
-    return text(`Сохранено в ${dir}: протокол.html, протокол.docx, протокол.md.\nЗадач: ${protocol.tasks.length}, решений: ${protocol.decisions.length}.${bad.length ? `\nТребуют проверки (цитата не найдена, нет ответственного или неясен срок): ${bad.join("; ")}` : "\nВсе пункты подтверждены цитатами."}`);
+    const pv = r.meeting.previous;
+    const carry = pv?.tasks.length ? `\nС прошлой встречи (${pv.date}): ${pv.tasks.map(t => `${t.text} — ${t.status === "done" ? "выполнено" : t.status === "discussed" ? "обсуждали" : "не выполнено"}`).join("; ")}` : "";
+    return text(`Сохранено в ${dir}: протокол.html, протокол.docx, протокол.md.${carry}\nЗадач: ${protocol.tasks.length}, решений: ${protocol.decisions.length}.${bad.length ? `\nТребуют проверки (цитата не найдена, нет ответственного или неясен срок): ${bad.join("; ")}` : "\nВсе пункты подтверждены цитатами."}`);
   });
 
   server.registerTool("make_protocol", {
