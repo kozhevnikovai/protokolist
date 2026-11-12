@@ -9,7 +9,7 @@
 <body>
 <aside>
   <div class="brand"><img src="icon.png" width="36" height="36" alt="">
-    <div><b>Протоколист</b><span id="ver">v1.2.0</span></div></div>
+    <div><b>Протоколист</b><span id="ver">v1.3.0</span></div></div>
   <nav>
     <button data-view="record" class="on"><span class="mono">01</span>Запись</button>
     <button data-view="file"><span class="mono">02</span>Файл</button>
@@ -55,6 +55,14 @@
       <label class="check small"><input type="checkbox" id="mic-ns"> Шумоподавление микрофона (включайте, если вокруг шумно; на гарнитуре может «съедать» тихие слова)</label>
       <div class="meters"><div><span>Микрофон</span><b id="m-mic"><i></i></b></div><div><span>Встреча</span><b id="m-sys"><i></i></b></div></div>
       <p class="note err" id="mic-warn" hidden></p>
+      <label class="check small"><input type="checkbox" id="rec-live" checked> Субтитры во время встречи и кнопка «Что я пропустил?» (распознавание на этом компьютере; на слабом ПК можно выключить)</label>
+      <div class="live" id="live" hidden>
+        <div class="live-head"><b>Субтитры</b>
+          <span class="live-actions"><select id="catch-min" aria-label="За сколько минут"><option value="2">2 мин</option><option value="5" selected>5 мин</option><option value="10">10 мин</option></select>
+          <button class="ghost" id="catch-up">Что я пропустил?</button><button class="ghost" id="catch-stop" hidden>Стоп</button></span></div>
+        <div class="live-box" id="live-box" aria-live="polite"><p class="note">Субтитры появятся, когда кто-нибудь заговорит.</p></div>
+        <div class="catch" id="catch" hidden></div>
+      </div>
       <details class="consent"><summary>Предупредите участников о записи — текст для чата</summary>
         <p id="consent-text">Коллеги, я записываю встречу для протокола. Запись и расшифровка обрабатываются только на моём компьютере и никуда не передаются. Если кто-то против — скажите, пожалуйста.</p>
         <button class="ghost" id="copy-consent">Скопировать</button></details>
@@ -115,7 +123,9 @@
   <section id="v-archive" hidden>
     <div class="kicker">Архив</div>
     <h1>Встречи</h1>
-    <input class="search" id="q" placeholder="Поиск по всем встречам: «бюджет», «Иван отчёт»…">
+    <form class="ask" id="ask-form"><input class="search" id="ask-q" maxlength="500" placeholder="Спросите архив: «что решили про цены в октябре?»"><button class="primary" id="ask-go">Спросить</button><button class="ghost" type="button" id="ask-stop" hidden>Стоп</button></form>
+    <div class="answer" id="ask-out" hidden></div>
+    <input class="search" id="q" placeholder="Поиск по словам: «бюджет», «Иван отчёт»…">
     <div id="hits"></div>
     <table class="list" id="meetings"></table>
   </section>

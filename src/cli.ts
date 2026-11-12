@@ -106,6 +106,20 @@ program.command("search").description("поиск по всем встречам
   console.log(hits.length ? hits.map(hitLine).join("\n") : "Ничего не нашлось.");
 });
 
+program.command("ask").description("вопрос по архиву встреч: protokolist ask что решили про цены в октябре").argument("<question...>")
+  .option("--no-model", "без языковой модели — только найденные фрагменты")
+  .action(async (q: string[], opts: { model: boolean }) => {
+    const { askArchive, sourceLine } = await import("./ask.js");
+    const c = loadConfig();
+    let llm = null;
+    if (opts.model) { const { createLLM } = await import("./protocol/llm.js"); llm = await createLLM(c.llm); }
+    try {
+      const r = await askArchive(c.outputDir, q.join(" "), llm);
+      console.log(r.answer);
+      if (r.sources.length) console.log(`\nИсточники:\n${r.sources.map(sourceLine).join("\n")}`);
+    } finally { await llm?.dispose(); }
+  });
+
 program.command("mcp").description("MCP-сервер для Claude Desktop и других клиентов").action(async () => {
   const { startMcp } = await import("./mcp.js");
   await startMcp();

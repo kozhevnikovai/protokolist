@@ -167,9 +167,10 @@ export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions
     `Решения: ${decisions.map(d => d.text).join("; ") || "нет"}`,
     `Задачи: ${tasks.map(x => `${x.text} (${x.owner || "ответственный не назван"})`).join("; ") || "нет"}`,
     o.agenda?.length ? `Повестка: ${o.agenda.join("; ")}` : "",
-    // сама стенограмма (начало) — чтобы резюме опиралось на речь, а не только на выжимку
-    `Стенограмма (фрагмент):\n${lines.join("\n").slice(0, 6000)}`,
-  ].filter(Boolean).join("\n");
+    // сама стенограмма — чтобы резюме опиралось на речь, а не только на выжимку;
+    // у длинной встречи — по кусочку из каждой части, а не только начало
+    `Стенограмма (${chunks.length > 1 ? "фрагменты из всех частей" : "фрагмент"}):\n${transcriptDigest(chunks, 6000)}`,
+  ].filter(Boolean).map(x => (x.startsWith("Стенограмма") ? x : x.slice(0, 4000))).join("\n");
   const fin = await llm.json<{ title: string; summary: string; missedAgenda: string[] }>(
     "Ты — секретарь совещаний. По итогам встречи дай короткое название (до 8 слов) и резюме из 1–3 предложений по-деловому. " +
       "Только то, что есть в стенограмме и выжимке: не придумывай решений, договорённостей и цифр. Если решений или задач нет — так и напиши." +
@@ -190,6 +191,13 @@ export async function buildProtocol(tr: Transcript, llm: LLM, o: ProtocolOptions
     extra,
     meta: { model: llm.name, seconds: Math.round((Date.now() - t0) / 1000), generatedAt: new Date().toISOString(), ...(warnings.length ? { warnings } : {}) },
   };
+}
+
+/** Равные доли из каждой части встречи — резюме длинной встречи не сводится к её первым минутам */
+export function transcriptDigest(chunks: string[], max: number): string {
+  if (chunks.length <= 1) return (chunks[0] ?? "").slice(0, max);
+  const each = Math.floor(max / chunks.length);
+  return chunks.map(c => { const cut = c.slice(0, each); const nl = cut.lastIndexOf("\n"); return nl > each / 2 ? cut.slice(0, nl) : cut; }).join("\n…\n");
 }
 
 const uniq = (xs: string[]) => dedupe(xs.filter(s => s?.trim()).map(text => ({ text: text.trim() }))).map(x => x.text);

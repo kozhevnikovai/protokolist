@@ -18,3 +18,16 @@ const acc = hit / gt.reduce((a, g) => a + g.end - g.start, 0) * 100;
 console.log(JSON.stringify({ wer: +wer.toFixed(1), speakers: ids.length, speakerAccuracy: +acc.toFixed(1), rtf: tr.stats.rtf, device: tr.stats.device }));
 const fails = [wer > 8 && `WER ${wer.toFixed(1)}% > 8%`, ids.length !== 3 && `спикеров ${ids.length} ≠ 3`, acc < 85 && `точность спикеров ${acc.toFixed(1)}% < 85%`].filter(Boolean);
 if (fails.length) { console.error("Провал: " + fails.join("; ")); process.exit(1); }
+
+// живые субтитры на той же записи: звук кусками по 0,25 с, как из окна приложения
+const { decode } = await import("../dist/audio.js");
+const { LiveTranscriber } = await import("../dist/live.js");
+const pcm = await decode(new URL("./audio/meeting-3-speakers.ogg", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
+const live = []; const t2 = Date.now();
+const lt = new LiveTranscriber({ source: "others", onLine: l => live.push(l) });
+for (let i = 0; i < pcm.length; i += 4096) lt.push(pcm.subarray(i, i + 4096));
+lt.finish();
+const liveWer = ed(ref, norm(live.map(l => l.text).join(" "))) / ref.length * 100;
+const liveRtf = (Date.now() - t2) / 1000 / (pcm.length / 16000);
+console.log(JSON.stringify({ liveLines: live.length, liveWer: +liveWer.toFixed(1), liveRtf: +liveRtf.toFixed(3) }));
+if (liveWer > 15 || liveRtf > 0.5) { console.error(`Провал субтитров: WER ${liveWer.toFixed(1)}%, RTF ${liveRtf.toFixed(2)}`); process.exit(1); }

@@ -1,6 +1,6 @@
 export * from "./types.js";
 export { transcribe, renameSpeakers, transcriptText, fmtTime, clusterVoices, vadPieces } from "./transcribe.js";
-export { buildProtocol, locateQuote, chunkTranscript } from "./protocol/build.js";
+export { buildProtocol, locateQuote, chunkTranscript, transcriptDigest } from "./protocol/build.js";
 export { createLLM, type LLM, type LLMOptions } from "./protocol/llm.js";
 export { TEMPLATES, getTemplate } from "./protocol/templates.js";
 export { parseDue } from "./protocol/dates.js";
@@ -20,3 +20,5 @@ export { download, missing, plan, totalSize, PACKS, homeDir, modelsDir, selectLl
 export { detectHardware, recommend } from "@kozhevnikovai/local-ai";
 export { netStats, setOffline, isOffline } from "./net.js";
 export { VERSION } from "./version.js";
+export { LiveTranscriber, catchUp, lastMinutes, liveToText, liveLabel, type LiveLine, type LiveSource, type StreamVad } from "./live.js";
+export { askArchive, retrieve, passages, sourceLine, monthOf, stem, type AskResult, type Found, type Passage } from "./ask.js";

@@ -7,6 +7,17 @@ const progress = (stage, done, total) => port.postMessage({ type: "progress", st
 const net = () => port.postMessage({ type: "net", ...core.netStats() });
 
 let downloading = null;
+// живые субтитры: по распознавателю на источник звука; модель для пересказа и вопросов держим загруженной
+let live = null;
+let llm = null;
+let llmBusy = null;
+async function getLlm() {
+  if (llm) return llm;
+  llmBusy ??= core.createLLM(core.loadConfig().llm).then(m => (llm = m)).finally(() => { llmBusy = null; });
+  return llmBusy;
+}
+async function freeLlm() { const m = llm; llm = null; await m?.dispose().catch(() => {}); }
+const stops = new Map();
 let hw = null; // характеристики компьютера: llama.cpp определяет видеокарту один раз
 async function models(c) {
   hw ??= await core.detectHardware();
@@ -66,10 +77,55 @@ const methods = {
   forgetAllVoices() { core.forgetAllVoices(); return true; },
   list() { return listMeetings(core.loadConfig().outputDir); },
   tasks() { return listTasks(core.loadConfig().outputDir); },
+  liveStart() {
+    const c = core.loadConfig();
+    const lines = [];
+    const glossary = core.parseGlossary(c.glossary);
+    const onLine = l => { lines.push(l); port.postMessage({ type: "live", line: l }); };
+    live = { lines, me: new core.LiveTranscriber({ source: "me", glossary, onLine }), others: new core.LiveTranscriber({ source: "others", glossary, onLine }) };
+    return true;
+  },
+  livePush({ source, pcm }) {
+    if (!live || !(source in { me: 1, others: 1 })) return false;
+    const a = pcm instanceof Float32Array ? pcm : new Float32Array(pcm);
+    live[source].push(a.subarray(0, 16000 * 10)); // не больше 10 с за раз
+    return true;
+  },
+  liveStop() {
+    if (!live) return [];
+    const l = live; live = null;
+    l.me.finish(); l.others.finish();
+    freeLlm();
+    return l.lines;
+  },
+  async catchUp({ minutes, key }) {
+    if (!live) throw new Error("Пересказ работает во время записи с субтитрами");
+    const ac = new AbortController(); stops.set(key, ac);
+    try {
+      const m = await getLlm();
+      return await core.catchUp(live.lines, m, { minutes: Math.min(30, Math.max(1, Number(minutes) || 5)), signal: ac.signal, onText: t => port.postMessage({ type: "live-text", key, text: t }) });
+    } finally { stops.delete(key); }
+  },
+  async ask({ question, key }) {
+    const q = String(question ?? "").trim().slice(0, 500);
+    if (q.length < 2) throw new Error("Задайте вопрос");
+    const c = core.loadConfig();
+    const ac = new AbortController(); stops.set(key, ac);
+    try {
+      const found = core.retrieve(core.passages(c.outputDir), q, 10);
+      const m = found.length && !core.missing(["llm"]).length ? await getLlm() : null;
+      const r = await core.askArchive(c.outputDir, q, m, { signal: ac.signal });
+      if (!live) freeLlm(); // вне записи модель не держим — освобождаем память
+      return r;
+    } finally { stops.delete(key); }
+  },
+  stop({ key }) { stops.get(key)?.abort(); return true; },
   search({ query }) { return searchMeetings(core.loadConfig().outputDir, query).map(h => ({ ...h, line: hitLine(h) })); },
 };
 
 port.on("message", async e => {
+  // звук для субтитров — поток без ответа, отдельно от вызовов методов
+  if (e.data?.type === "pcm") { try { methods.livePush(e.data); } catch { /* фраза не распознана — субтитры не важнее записи */ } return; }
   const { id, method, args } = e.data;
   try {
     core.setSecrets(e.data.secrets);

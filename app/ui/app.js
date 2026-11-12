@@ -280,6 +280,17 @@ async function startRec() {
     // гарнитуру выдернули — продолжаем писать звук компьютера
     s.getAudioTracks().forEach(t => t.addEventListener("ended", () => { if (rec) { $("#mic-warn").hidden = false; $("#mic-warn").textContent = k === "mic" ? "Микрофон отключился. Звук компьютера продолжает записываться." : "Звук компьютера перестал записываться."; } }));
   }
+  // живые субтитры: звук 16 кГц уходит в фоновый процесс, файл записи от этого не зависит
+  const taps = [];
+  if ($("#rec-live").checked) {
+    try {
+      await pk.core("liveStart");
+      for (const [k, s] of Object.entries(parts)) taps.push(pcmTap(s, k === "mic" && parts.sys ? "me" : "others"));
+      $("#live").hidden = false;
+      $("#live-box").innerHTML = `<p class="note">Субтитры появятся, когда кто-нибудь заговорит.</p>`;
+      $("#catch").hidden = true;
+    } catch (e) { toast("Субтитры не запустились: " + e.message + ". Запись идёт.", "err"); }
+  }
   const t0 = Date.now();
   const timer = setInterval(() => {
     $("#timer").textContent = fmt((Date.now() - t0) / 1000);
@@ -287,14 +298,14 @@ async function startRec() {
     if (parts.mic && !heard && ++quiet === 16) { $("#mic-warn").hidden = false; $("#mic-warn").textContent = "Микрофон почти не слышно. Проверьте, что выбрана нужная гарнитура и она не выключена."; }
     if (heard && quiet < 16) $("#mic-warn").hidden = true;
   }, 500);
-  rec = { recorders, tracks, stops, timer, t0, files, writes };
+  rec = { recorders, tracks, stops, timer, t0, files, writes, taps };
   toast("Запись идёт. Предупредите участников — текст для чата есть ниже на этом экране.", "info", 7000);
   starting = false;
   pk.setState({ recording: true });
   $("#rec").disabled = false;
   $("#rec").textContent = "■ Остановить и расшифровать";
   $("#rec").classList.add("rec");
-  $$("#rec-sys, #rec-mic, #mic-dev, #mic-ns, #mic-test").forEach(x => (x.disabled = true));
+  $$("#rec-sys, #rec-mic, #mic-dev, #mic-ns, #mic-test, #rec-live").forEach(x => (x.disabled = true));
 }
 
 async function stopRec() {
@@ -304,6 +315,8 @@ async function stopRec() {
   $("#rec").disabled = true;
   clearInterval(r.timer);
   r.stops.forEach(f => f());
+  r.taps.forEach(f => f());
+  if (r.taps.length) { catchStop(); pk.core("liveStop").catch(() => {}); $("#live").hidden = true; }
   await Promise.all(Object.values(r.recorders).map(m => new Promise(res => { m.onstop = res; m.stop(); })));
   r.tracks.forEach(t => t.stop());
   await Promise.all(r.writes);
@@ -313,11 +326,75 @@ async function stopRec() {
   $("#rec").textContent = "● Начать запись";
   $("#rec").classList.remove("rec");
   $("#mic-warn").hidden = true;
-  $$("#rec-sys, #rec-mic, #mic-dev, #mic-ns, #mic-test").forEach(x => (x.disabled = false));
+  $$("#rec-sys, #rec-mic, #mic-dev, #mic-ns, #mic-test, #rec-live").forEach(x => (x.disabled = false));
   if ((Date.now() - r.t0) < 1500) return toast("Запись слишком короткая — запишите хотя бы пару секунд", "err");
   // основной файл — звук встречи; микрофон — отдельной дорожкой «Я». Живая встреча — только микрофон.
   process(r.files.sys ?? r.files.mic, r.files.sys ? r.files.mic : undefined, Object.values(r.files));
 }
+
+// ── Живые субтитры и «Что я пропустил?»
+/** Звук дорожки → 16 кГц моно кусками ~0,25 с в фоновый процесс */
+function pcmTap(stream, source) {
+  const ctx = new AudioContext({ sampleRate: 16000 });
+  const src = ctx.createMediaStreamSource(stream);
+  const node = ctx.createScriptProcessor(4096, 1, 1);
+  node.onaudioprocess = e => pk.livePcm(source, new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(node); node.connect(ctx.destination);
+  return () => { try { node.disconnect(); src.disconnect(); ctx.close(); } catch { /* уже закрыт */ } };
+}
+pk.on("live", ({ line }) => {
+  const box = $("#live-box");
+  if (!box) return;
+  box.querySelector(".note")?.remove();
+  const stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 30; // не дёргаем, если пользователь листает назад
+  const p = document.createElement("p");
+  if (line.source === "me") p.className = "me";
+  p.innerHTML = `<span class="who">${fmt(line.start)} ${line.source === "me" ? "Я" : "Встреча"}</span>${esc(line.text)}`;
+  box.append(p);
+  while (box.children.length > 300) box.firstElementChild.remove();
+  if (stick) box.scrollTop = box.scrollHeight;
+});
+let streamKey = null;
+pk.on("live-text", ({ key, text }) => {
+  if (key !== streamKey) return;
+  const el = key.startsWith("ask") ? $("#ask-out .txt") : $("#catch");
+  if (el) el.textContent += text;
+});
+function catchStop() { if (streamKey?.startsWith("catch")) pk.core("stop", { key: streamKey }).catch(() => {}); }
+$("#catch-up").addEventListener("click", async () => {
+  if (!rec) return;
+  const key = streamKey = "catch-" + Date.now();
+  const box = $("#catch");
+  box.hidden = false; box.textContent = "";
+  $("#catch-up").disabled = true; $("#catch-stop").hidden = false;
+  const wait = setTimeout(() => { if (!box.textContent) box.textContent = "Загружаю модель — первый раз это занимает до минуты…\n"; }, 800);
+  try {
+    const r = await pk.core("catchUp", { minutes: Number($("#catch-min").value), key });
+    clearTimeout(wait);
+    box.textContent = `${fmt(r.from)}–${fmt(r.to)}\n${r.text}`;
+  } catch (e) { clearTimeout(wait); box.textContent = /Остановлено/.test(e.message) ? box.textContent.replace(/^Загружаю[^\n]*\n/, "") + "\n(остановлено)" : "Не получилось: " + e.message; }
+  finally { $("#catch-up").disabled = false; $("#catch-stop").hidden = true; }
+});
+$("#catch-stop").addEventListener("click", catchStop);
+
+// ── Вопрос по архиву
+$("#ask-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = $("#ask-q").value.trim();
+  if (q.length < 2 || $("#ask-go").disabled) return;
+  const key = streamKey = "ask-" + Date.now();
+  const out = $("#ask-out");
+  out.hidden = false;
+  out.innerHTML = `<div class="txt">Ищу во встречах…</div>`;
+  $("#ask-go").disabled = true; $("#ask-stop").hidden = false;
+  try {
+    const r = await pk.core("ask", { question: q, key });
+    out.innerHTML = `<div class="txt">${esc(r.answer)}</div>${r.sources.length ? `<div class="src"><b>Источники</b>${r.sources.map(f => `<div data-file="${esc(f.file)}">[${f.n}] ${ruDate(f.date)} «${esc(f.title)}» · ${esc(f.kind)}${f.at !== null ? " · " + fmt(f.at) : ""}: ${esc(f.text)}</div>`).join("")}</div>` : ""}${r.model ? "" : `<p class="note">Ответ без языковой модели${r.sources.length ? " — смотрите фрагменты" : ""}.</p>`}`;
+    $$("#ask-out .src div").forEach(el => el.addEventListener("click", () => pk.open(el.dataset.file)));
+  } catch (err) { out.innerHTML = `<div class="txt">${esc(/Остановлено/.test(err.message) ? "Остановлено." : "Не получилось: " + err.message)}</div>`; }
+  finally { $("#ask-go").disabled = false; $("#ask-stop").hidden = true; }
+});
+$("#ask-stop").addEventListener("click", () => { if (streamKey?.startsWith("ask")) pk.core("stop", { key: streamKey }).catch(() => {}); });
 
 // Трей, индикатор поверх окон и горячая клавиша вызывают то же, что и кнопка в окне
 window.__pkToggle = () => { if (rec) return stopRec(); show("record"); return startRec(); };
