@@ -44,6 +44,7 @@ jobs:
         run: |
           node dist/cli.js src-audio/b.wav --date 2026-11-09 -o "$PROTOKOLIST_OUT"
           node dist/cli.js src-audio/a.wav --date 2026-11-12 -o "$PROTOKOLIST_OUT"
+      - run: npx playwright-core install ffmpeg
       - name: Съёмка приложения
         run: LIVE_PCM=src-audio/live.pcm xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/media/capture.mjs
       - uses: actions/upload-artifact@v7
