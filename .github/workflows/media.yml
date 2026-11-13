@@ -1,17 +1,50 @@
 name: media
+# Скриншоты и записи настоящей работы приложения (открытые записи совещаний с government.ru, CC BY 4.0)
 on:
   workflow_dispatch:
   push:
     branches: ['media/**']
     paths: ['.github/workflows/media.yml', 'scripts/media/**']
 jobs:
-  probe:
+  capture:
     runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PROTOKOLIST_HOME: /home/runner/pk
+      PROTOKOLIST_OUT: /home/runner/meetings
+      PROTOKOLIST_GPU: cpu
+      PROTOKOLIST_LLM_MODEL: qwen3-14b
+      A_URL: https://static.government.ru/media/video/hd/6p7LAwYY4HpIXLPxNTi7oCs3DnH2X4Aw.mp4
+      B_URL: https://static.government.ru/media/video/hd/gjxdxTM26Wnf3k7GU2OiFd1JbimI01WI.mp4
     steps:
-      - name: Источники
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci && npm run build
+      - uses: actions/cache@v6
+        with: { path: ~/.pk/models, key: asr-models-v1 }
+      - uses: actions/cache@v6
+        with: { path: ~/pk/models/llm, key: llm-qwen3-14b-v1 }
+      - name: Модели
         run: |
-          for u in http://government.ru/news/60394/ http://government.ru/news/60429/ https://zakupki.gov.ru/epz/main/public/home.html; do
-            echo "== $u"; curl -sL -m 30 -A "Mozilla/5.0" -o p.html -w "%{http_code} %{size_download}\n" "$u" || echo fail
-            grep -oE '(https?:)?//[^"'"'"' ]+\.(mp4|m3u8|webm|mp3)[^"'"'"' ]*' p.html | sort -u | head -10
-            grep -oE '<title>[^<]*' p.html | head -1
-          done
+          mkdir -p ~/pk/models && cp -rn ~/.pk/models/. ~/pk/models/ 2>/dev/null || true
+          node dist/cli.js models --model qwen3-14b
+      - name: Записи совещаний
+        run: |
+          mkdir -p src-audio && cd src-audio
+          curl -sfL -A "Mozilla/5.0" -o a.mp4 "$A_URL" && curl -sfL -A "Mozilla/5.0" -o b.mp4 "$B_URL"
+          ffprobe -v error -show_entries format=duration -of csv=p=0 a.mp4 b.mp4
+          ffmpeg -v error -i a.mp4 -t 900 -vn -ac 1 -ar 16000 a.wav
+          ffmpeg -v error -i b.mp4 -t 720 -vn -ac 1 -ar 16000 b.wav
+          ffmpeg -v error -ss 720 -i b.mp4 -t 150 -vn -ac 1 -ar 16000 -f s16le live.pcm
+      - name: Протоколы двух совещаний
+        run: |
+          node dist/cli.js src-audio/b.wav --date 2026-11-09 -o "$PROTOKOLIST_OUT"
+          node dist/cli.js src-audio/a.wav --date 2026-11-12 -o "$PROTOKOLIST_OUT"
+      - name: Съёмка приложения
+        run: LIVE_PCM=src-audio/live.pcm xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/media/capture.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: media, path: |
+            media/
+            /home/runner/meetings/ }
