@@ -45,6 +45,8 @@ jobs:
         run: LIVE_PCM=src-audio/live.pcm xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/media/capture.mjs
       - uses: actions/upload-artifact@v7
         if: always()
-        with: { name: media, path: |
+        with:
+          name: media
+          path: |
             media/
-            /home/runner/meetings/ }
+            /home/runner/meetings/
