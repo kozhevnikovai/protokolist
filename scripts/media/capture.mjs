@@ -49,7 +49,7 @@ await win.waitForSelector("#v-result:not([hidden])", { timeout: 60 * 60e3 }); ma
 await shot("app-result");
 // 2. Архив и вопрос к архиву
 await nav("archive"); mark("archive"); await shot("app-archive");
-await win.fill("#ask-q", process.env.ASK_Q || "Какие поручения дали и кому?"); await win.click("#ask-go"); mark("ask");
+await win.fill("#ask-q", process.env.ASK_Q || "О чём говорили на встречах?"); await win.click("#ask-go"); mark("ask");
 await win.waitForFunction(() => !document.querySelector("#ask-out").hidden && document.querySelector("#ask-stop").hidden, null, { timeout: 30 * 60e3 });
 mark("ask-done"); await shot("app-ask");
 // 3. Задачи из всех протоколов, подключения
