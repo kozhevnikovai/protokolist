@@ -31,6 +31,7 @@ jobs:
           node dist/cli.js models --model qwen3-14b
       - name: Записи совещаний
         run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
           mkdir -p src-audio && cd src-audio
           curl -sfL -A "Mozilla/5.0" -o a.mp4 "$A_URL" && curl -sfL -A "Mozilla/5.0" -o b.mp4 "$B_URL"
           ffprobe -v error -show_entries format=duration -of csv=p=0 a.mp4 b.mp4
