@@ -33,7 +33,9 @@ jobs:
         run: |
           sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
           mkdir -p src-audio && cd src-audio
-          curl -sfL -A "Mozilla/5.0" -o a.mp4 "$A_URL" && curl -sfL -A "Mozilla/5.0" -o b.mp4 "$B_URL"
+          get() { c=$(curl -sL -o "$1" -w "%{http_code}" "$2"); echo "$2 → $c $(stat -c %s "$1" 2>/dev/null)"; [ "$c" = 200 ]; }
+          get a.mp4 "$A_URL"
+          get b.mp4 "$B_URL"
           for f in a.mp4 b.mp4; do ffprobe -v error -show_entries format=duration -of csv=p=0 $f; done
           ffmpeg -v error -i a.mp4 -t 900 -vn -ac 1 -ar 16000 a.wav
           ffmpeg -v error -i b.mp4 -t 720 -vn -ac 1 -ar 16000 b.wav
