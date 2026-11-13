@@ -1,0 +1,17 @@
+name: media
+on:
+  workflow_dispatch:
+  push:
+    branches: ['media/**']
+    paths: ['.github/workflows/media.yml', 'scripts/media/**']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Источники
+        run: |
+          for u in http://government.ru/news/60394/ http://government.ru/news/60429/ https://zakupki.gov.ru/epz/main/public/home.html; do
+            echo "== $u"; curl -sL -m 30 -A "Mozilla/5.0" -o p.html -w "%{http_code} %{size_download}\n" "$u" || echo fail
+            grep -oE '(https?:)?//[^"'"'"' ]+\.(mp4|m3u8|webm|mp3)[^"'"'"' ]*' p.html | sort -u | head -10
+            grep -oE '<title>[^<]*' p.html | head -1
+          done
