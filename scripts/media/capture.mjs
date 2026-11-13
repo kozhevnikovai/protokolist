@@ -7,6 +7,16 @@ const OUT = "media", RAW = "media/raw";
 mkdirSync(RAW, { recursive: true });
 const pcm = readFileSync(process.env.LIVE_PCM).toString("base64"); // s16le, 16 кГц, моно
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+// 0. Первый запуск: выбор модели под компьютер (local-ai) и загрузка с прогрессом
+{
+  const fresh = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env, PROTOKOLIST_HOME: "/tmp/pk-fresh" }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
+  await fresh.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); });
+  const w = await fresh.firstWindow(); await w.waitForSelector("#v-setup:not([hidden])", { timeout: 30e3 }); await w.waitForTimeout(1500);
+  await w.screenshot({ path: join(OUT, "app-setup.png") }); log("снимок app-setup");
+  await w.click("#dl"); await w.waitForTimeout(25e3);
+  await w.screenshot({ path: join(OUT, "app-download.png") }); log("снимок app-download");
+  const fv = w.video(); await fresh.close(); copyFileSync(await fv.path(), join(RAW, "setup.webm"));
+}
 const app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
 await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows().find(w => w.isVisible() || true); w.setSize(1280, 800); w.center(); });
 await app.context().addInitScript(b64 => {
