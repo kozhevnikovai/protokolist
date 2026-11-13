@@ -33,7 +33,7 @@ jobs:
           pip install -q datasets soundfile numpy
           mkdir -p src-audio
           python3 scripts/media/assemble.py src-audio/b.wav 300,700,1100 7
-          python3 scripts/media/assemble.py src-audio/live.wav 1500,1900,2300 5
+          python3 scripts/media/assemble.py src-audio/live.wav 150,500,900 6
           ffmpeg -v error -i src-audio/live.wav -ac 1 -ar 16000 -f s16le src-audio/live.pcm
       - name: Протоколы двух записей
         run: |
