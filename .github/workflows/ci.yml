@@ -7,15 +7,15 @@ jobs:
       matrix: { os: [ubuntu-latest, windows-latest, macos-latest] }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
       # сквозная проверка: модели распознавания + реальная речь (RuLibriSpeech, общественное достояние)
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with: { path: ~/.pk/models, key: asr-models-v1 }
       - name: Распознавание и спикеры на тестовой «встрече»
         shell: bash

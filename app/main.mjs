@@ -58,7 +58,7 @@ let seq = 0;
 function startWorker() {
   worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "inherit" });
   worker.on("message", m => {
-    if (m.type === "progress" || m.type === "net") return win?.webContents.send(m.type, m);
+    if (m.type === "progress" || m.type === "net" || m.type === "live" || m.type === "live-text") return win?.webContents.send(m.type, m);
     const p = pending.get(m.id);
     if (!p) return;
     pending.delete(m.id);
@@ -164,6 +164,13 @@ ipcMain.handle("state", (e, st) => {
   // во время записи не даём системе уснуть — иначе звук обрывается
   if (appState.recording && sleepBlock === null) sleepBlock = powerSaveBlocker.start("prevent-app-suspension");
   if (!appState.recording && sleepBlock !== null) { powerSaveBlocker.stop(sleepBlock); sleepBlock = null; }
+});
+
+// звук для живых субтитров: 16 кГц моно, кусками по ~0,25 с; только из главного окна и во время записи
+ipcMain.on("live-pcm", (e, source, pcm) => {
+  if (e.sender !== win?.webContents || !appState.recording || !worker) return;
+  if (!(pcm instanceof Float32Array) || pcm.length > 16000 * 5 || !["me", "others"].includes(source)) return;
+  worker.postMessage({ type: "pcm", source, pcm });
 });
 
 ipcMain.handle("core", async (_e, method, args) => {

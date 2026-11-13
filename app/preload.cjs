@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("pk", {
   core: (method, args) => ipcRenderer.invoke("core", method, args),
   pickFile: () => ipcRenderer.invoke("pick-file"),
   pickDir: () => ipcRenderer.invoke("pick-dir"),
+  livePcm: (source, pcm) => ipcRenderer.send("live-pcm", source, pcm),
   recChunk: (name, bytes) => ipcRenderer.invoke("rec-chunk", name, bytes),
   recPath: name => ipcRenderer.invoke("rec-path", name),
   recDone: paths => ipcRenderer.invoke("rec-done", paths),
@@ -17,5 +18,5 @@ contextBridge.exposeInMainWorld("pk", {
   platform: () => ipcRenderer.invoke("platform"),
   hotkey: () => ipcRenderer.invoke("hotkey"),
   pathOf: file => webUtils.getPathForFile(file),
-  on: (ch, fn) => { if (["progress", "net", "meeting"].includes(ch)) ipcRenderer.on(ch, (_e, m) => fn(m)); },
+  on: (ch, fn) => { if (["progress", "net", "meeting", "live", "live-text"].includes(ch)) ipcRenderer.on(ch, (_e, m) => fn(m)); },
 });

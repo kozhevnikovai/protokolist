@@ -15,10 +15,12 @@ Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meeti
 - **"Me" is never confused**: microphone and meeting audio are recorded as separate tracks; other participants are separated by voice; speaker echo is filtered.
 - **Spoken deadlines become dates** ("by Friday", "in two weeks") and go to calendar (.ics), Bitrix24, YouGile, Kaiten and Yandex Tracker.
 - **Recording is always visible**: a tray icon and an always-on-top "Recording" indicator; start/stop from any app with Ctrl+Alt+R (⌘⌥R on Mac).
+- **Live captions and "What did I miss?"** — captions in the recording window during the meeting; one click summarizes the last 2, 5 or 10 minutes and flags if someone addressed you. All on your computer.
+- **Ask your meeting archive** — "what did we decide on prices in October?" — answers only from found fragments, with links to meetings and timecodes; `protokolist ask <question>`, `ask_archive` in Claude Desktop.
 - **Official minutes per Russian standard GOST R 7.0.97-2016** in DOCX.
 - **Russian ASR with GigaAM v3** (Sber, MIT): 3.7% WER and 98% speaker accuracy on the test recording, 8–9× faster than real time on a CPU.
 
-Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Kaiten, Yandex Tracker, Telegram, Pachca, Obsidian notes (PII masked before sending). Known voices (opt-in): a participant named once is recognized in later meetings. Meeting series: the protocol lists last meeting's tasks with status. Local search across all meetings.
+Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Kaiten, Yandex Tracker, Telegram, Pachca, Obsidian notes (PII masked before sending). Known voices (opt-in): a participant named once is recognized in later meetings. Meeting series: the protocol lists last meeting's tasks with status. Local search across all meetings. Long recordings (up to 8 hours) are processed in parts, the summary covers the whole meeting.
 
 ## Install
 

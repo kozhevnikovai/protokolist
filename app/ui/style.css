@@ -84,3 +84,8 @@ button{white-space:nowrap}
 
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:13px}
 tr.done td{color:var(--pencil);text-decoration:line-through}tr.done td:first-child{text-decoration:none}
+.live{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px 14px}
+.live-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.live-actions{display:flex;gap:8px;align-items:center}.live-actions select{width:auto;min-height:40px}
+.live-box{max-height:220px;overflow-y:auto;margin-top:8px;font-size:15px;line-height:1.5}.live-box p{margin:2px 0}.live-box .who{color:var(--pencil);font-size:12px;margin-right:6px}.live-box .me .who{color:var(--acc)}
+.catch,.answer{margin-top:10px;background:var(--plate);border-radius:10px;padding:12px 14px;white-space:pre-wrap;font-size:15px}.answer .src{white-space:normal;margin-top:10px;font-size:13px;color:var(--pencil)}.answer .src div{cursor:pointer;padding:3px 0}.answer .src div:hover{color:var(--ink)}
+.ask{display:flex;gap:10px;align-items:center}.ask .search{flex:1}

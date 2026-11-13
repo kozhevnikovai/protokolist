@@ -24,10 +24,13 @@
     { "name": "make_protocol", "description": "Протокол полностью офлайн встроенной моделью" },
     { "name": "list_meetings", "description": "Архив встреч" },
     { "name": "search_meetings", "description": "Поиск по решениям, задачам и стенограммам всех встреч" },
-    { "name": "get_meeting", "description": "Протокол встречи по id" }
+    { "name": "get_meeting", "description": "Протокол встречи по id" },
+    { "name": "ask_archive", "description": "Фрагменты архива для ответа на вопрос своими словами: «что решили про цены в октябре?»" },
+    { "name": "list_tasks", "description": "Задачи из всех встреч: ответственный, срок, выполнено ли" }
   ],
   "prompts": [
-    { "name": "meeting_protocol", "description": "Протокол встречи из файла", "arguments": ["file"], "text": "Расшифруй встречу ${arguments.file} инструментом transcribe_meeting, составь протокол по правилам из ответа инструмента и сохрани его через save_protocol. Затем кратко перескажи решения и задачи." }
+    { "name": "meeting_protocol", "description": "Протокол встречи из файла", "arguments": ["file"], "text": "Расшифруй встречу ${arguments.file} инструментом transcribe_meeting, составь протокол по правилам из ответа инструмента и сохрани его через save_protocol. Затем кратко перескажи решения и задачи." },
+    { "name": "archive_question", "description": "Вопрос по архиву встреч", "arguments": ["question"], "text": "Найди ответ на вопрос «${arguments.question}» инструментом ask_archive. Отвечай только по найденным фрагментам, со ссылками [n] и датой встречи; если ответа нет — так и скажи." }
   ],
   "user_config": {
     "output_dir": { "type": "directory", "title": "Папка для протоколов", "description": "Оставьте пустой — Документы/Протоколист", "required": false, "default": "" }
