@@ -27,7 +27,8 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
   await new Promise(r => setTimeout(r, 3000)); try { if (fvp) copyFileSync(fvp, join(RAW, "setup.webm")); } catch {}
 }
 const app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
-await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows().find(w => w.isVisible() || true); w.setSize(1280, 800); w.center(); });
+const win = await app.firstWindow({ timeout: 90e3 });
+await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); w.show(); });
 await app.context().addInitScript(b64 => {
   navigator.mediaDevices.getDisplayMedia = async () => {
     const bin = atob(b64), n = bin.length >> 1, f = new Float32Array(n);
@@ -38,7 +39,6 @@ await app.context().addInitScript(b64 => {
     return dst.stream;
   };
 }, pcm);
-const win = await app.firstWindow({ timeout: 90e3 });
 await win.reload(); await win.waitForTimeout(1500);
 const shot = async name => { await win.waitForTimeout(400); await snap(app, win, join(OUT, name + ".png")); log("снимок", name); };
 const nav = async v => { await win.click(`nav button[data-view="${v}"]`); await win.waitForTimeout(800); };

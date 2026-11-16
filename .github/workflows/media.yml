@@ -35,7 +35,11 @@ jobs:
           python3 scripts/media/assemble.py src-audio/b.wav 300,700,1100 7
           python3 scripts/media/assemble.py src-audio/live.wav 150,500,900 6
           ffmpeg -v error -i src-audio/live.wav -ac 1 -ar 16000 -f s16le src-audio/live.pcm
+      - uses: actions/cache@v6
+        id: meetings
+        with: { path: /home/runner/meetings, key: "media-meetings-v1-${{ hashFiles('scripts/media/assemble.py') }}" }
       - name: Протоколы двух записей
+        if: steps.meetings.outputs.cache-hit != 'true'
         run: |
           node dist/cli.js test/audio/meeting-3-speakers.ogg --date 2026-11-09 -o "$PROTOKOLIST_OUT"
           node dist/cli.js src-audio/b.wav --date 2026-11-12 -o "$PROTOKOLIST_OUT"
