@@ -35,21 +35,10 @@ h1{position:absolute;left:46px;bottom:118px;font-size:62px;line-height:1.08;font
 const icon = size => `<html><body style="margin:0"><svg width="${size}" height="${size}" viewBox="0 0 512 512"><rect width="512" height="512" fill="#fff"/><rect x="24" y="24" width="464" height="464" fill="none" stroke="#161616" stroke-width="12"/><g transform="translate(54 40) scale(1.1)">${glyph().replace(/stroke-width="3"/g, 'stroke-width="9"').replace(/stroke-width="2"/g, 'stroke-width="6"')}</g></svg></body></html>`;
 const b = await chromium.launch({ executablePath: exe });
 const p = await b.newPage({ viewport: { width: 1280, height: 640 } });
-await p.setContent(cover); await p.waitForTimeout(300);
-await p.screenshot({ path: "docs/img/cover.png" });
+// обложка 1280×640 — общий шаблон kozhevnikovai/hq media-kit/covers.mjs
 for (const [path, s] of [["app/build/icon.png", 1024], ["app/ui/icon.png", 256], ["docs/img/icon.png", 512]]) {
   await p.setViewportSize({ width: s, height: s }); await p.setContent(icon(s)); await p.screenshot({ path });
 }
-// скриншоты: интерфейс с подставным мостом и пример протокола
-const mock = `window.pk={on(){},platform:async()=>"win32",core:async m=>m==="status"?{missing:[],net:{sentBytes:0},config:{template:"planerka",offline:true},templates:${JSON.stringify([{ id: "planerka", title: "Рабочая встреча / планёрка" }])}}:m==="list"?${JSON.stringify([{ dir: "x", date: "2026-11-09", title: "Релиз приложения и найм дизайнера", duration: 1834, tasks: 4 }, { dir: "y", date: "2026-11-06", title: "Встреча с клиентом: CRM для трёх магазинов", duration: 2710, tasks: 2 }, { dir: "z", date: "2026-11-03", title: "Итоги квартала (ГОСТ)", duration: 3605, tasks: 5 }])}:[]};`;
-await p.setViewportSize({ width: 1280, height: 800 });
-await p.addInitScript(mock);
-await p.goto("file://" + process.cwd() + "/app/ui/index.html"); await p.waitForTimeout(400);
-await p.screenshot({ path: "docs/img/app-record.png" });
-await p.click('nav button[data-view="archive"]'); await p.waitForTimeout(300);
-await p.screenshot({ path: "docs/img/app-archive.png" });
-const p2 = await b.newPage({ viewport: { width: 1280, height: 900 } });
-await p2.goto("file://" + process.cwd() + "/docs/example/протокол.html"); await p2.waitForTimeout(400);
-await p2.screenshot({ path: "docs/img/protocol.png" });
+// скриншоты интерфейса снимает workflow media с настоящего приложения (scripts/media/capture.mjs)
 await b.close();
 console.log("media: ok");
