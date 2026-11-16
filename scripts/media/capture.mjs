@@ -6,15 +6,21 @@ import { join } from "node:path";
 const OUT = "media", RAW = "media/raw";
 mkdirSync(RAW, { recursive: true });
 const pcm = readFileSync(process.env.LIVE_PCM).toString("base64"); // s16le, 16 кГц, моно
+// снимок окна: сначала через Playwright, при отказе — средствами Electron (capturePage)
+async function snap(eapp, page, path) {
+  await eapp.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.show(); w.focus(); });
+  try { await page.screenshot({ path }); }
+  catch { const b64 = await eapp.evaluate(async ({ BrowserWindow }) => (await BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString("base64")); writeFileSync(path, Buffer.from(b64, "base64")); }
+}
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 // 0. Первый запуск: выбор модели под компьютер (local-ai) и загрузка с прогрессом
 {
   const fresh = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env, PROTOKOLIST_HOME: "/tmp/pk-fresh" }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
   await fresh.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); });
   const w = await fresh.firstWindow(); await w.waitForSelector("#v-setup:not([hidden])", { timeout: 30e3 }); await w.waitForTimeout(1500);
-  await w.screenshot({ path: join(OUT, "app-setup.png") }); log("снимок app-setup");
+  await snap(fresh, w, join(OUT, "app-setup.png")); log("снимок app-setup");
   await w.click("#dl"); await w.waitForTimeout(25e3);
-  await w.screenshot({ path: join(OUT, "app-download.png") }); log("снимок app-download");
+  await snap(fresh, w, join(OUT, "app-download.png")); log("снимок app-download");
   const fv = w.video(); await fresh.close(); copyFileSync(await fv.path(), join(RAW, "setup.webm"));
 }
 const app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
@@ -31,7 +37,7 @@ await app.context().addInitScript(b64 => {
 }, pcm);
 const win = await app.firstWindow();
 await win.reload(); await win.waitForTimeout(1500);
-const shot = async name => { await win.waitForTimeout(400); await win.screenshot({ path: join(OUT, name + ".png") }); log("снимок", name); };
+const shot = async name => { await win.waitForTimeout(400); await snap(app, win, join(OUT, name + ".png")); log("снимок", name); };
 const nav = async v => { await win.click(`nav button[data-view="${v}"]`); await win.waitForTimeout(800); };
 const marks = {}; const t0 = Date.now(); const mark = k => (marks[k] = (Date.now() - t0) / 1000);
 
