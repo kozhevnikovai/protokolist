@@ -16,7 +16,8 @@ async function getLlm() {
   llmBusy ??= core.createLLM(core.loadConfig().llm).then(m => (llm = m)).finally(() => { llmBusy = null; });
   return llmBusy;
 }
-async function freeLlm() { const m = llm; llm = null; await m?.dispose().catch(() => {}); }
+let freeing = null; // выгрузка модели идёт асинхронно — распознавание ждёт её, чтобы не делить память и ядра
+async function freeLlm() { const m = llm; llm = null; if (m) freeing = m.dispose().catch(() => {}).finally(() => { freeing = null; }); await freeing; }
 const stops = new Map();
 let hw = null; // характеристики компьютера: llama.cpp определяет видеокарту один раз
 async function models(c) {
@@ -52,6 +53,7 @@ const methods = {
     return methods.status();
   },
   async transcribe({ file, micFile, speakers }) {
+    if (!live) await freeLlm(); // после пересказа во время записи 14B ещё в памяти — выгружаем до разбора голосов
     const c = core.loadConfig();
     const tr = await core.transcribe(file, { micFile, speakers, glossary: core.parseGlossary(c.glossary), voices: c.voices ? core.listVoices() : undefined, onProgress: progress });
     return tr;

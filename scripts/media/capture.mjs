@@ -55,7 +55,8 @@ await win.waitForFunction(() => !document.querySelector("#catch").hidden && docu
 mark("catch-done"); await shot("app-catch-up");
 const left = await win.evaluate(() => window.__demoEnds - Date.now()); if (left > 0) await win.waitForTimeout(left + 1500);
 await win.click("#rec"); mark("stop");
-await win.waitForSelector("#v-result:not([hidden])", { timeout: 60 * 60e3 }); mark("result");
+const mem = setInterval(async () => { const { execSync } = await import("node:child_process"); log("память", execSync("free -m | sed -n 2p; top -bn1 -o %CPU | sed -n 8,10p").toString().replace(/\s+/g, " ")); }, 60e3);
+await win.waitForSelector("#v-result:not([hidden])", { timeout: 40 * 60e3 }); clearInterval(mem); mark("result");
 await shot("app-result");
 // 2. Архив и вопрос к архиву
 await nav("archive"); mark("archive"); await shot("app-archive");
