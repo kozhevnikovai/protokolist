@@ -27,8 +27,8 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
   await Promise.race([fresh.close(), new Promise(r => setTimeout(r, 15e3))]); try { fresh.process().kill("SIGKILL"); } catch {}
   await new Promise(r => setTimeout(r, 3000)); try { if (fvp) copyFileSync(fvp, join(RAW, "setup.webm")); } catch {}
 }
-const app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
-const win = await app.firstWindow({ timeout: 90e3 });
+let app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
+let win = await app.firstWindow({ timeout: 90e3 });
 await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); w.show(); });
 await app.context().addInitScript(b64 => {
   navigator.mediaDevices.getDisplayMedia = async () => {
@@ -55,9 +55,19 @@ await win.waitForFunction(() => !document.querySelector("#catch").hidden && docu
 mark("catch-done"); await shot("app-catch-up");
 const left = await win.evaluate(() => window.__demoEnds - Date.now()); if (left > 0) await win.waitForTimeout(left + 1500);
 await win.click("#rec"); mark("stop");
-const mem = setInterval(async () => { const { execSync } = await import("node:child_process"); log("память", execSync("free -m | sed -n 2p; top -bn1 -o %CPU | sed -n 8,10p").toString().replace(/\s+/g, " ")); }, 60e3);
-await win.waitForSelector("#v-result:not([hidden])", { timeout: 40 * 60e3 }); clearInterval(mem); mark("result");
-await shot("app-result");
+await win.waitForTimeout(15000); await shot("app-processing");
+let ok = true;
+try { await win.waitForSelector("#v-result:not([hidden])", { timeout: 12 * 60e3 }); mark("result"); await shot("app-result"); }
+catch { ok = false; log("ВНИМАНИЕ: разбор после живой записи не завершился за 12 мин — съёмка продолжается на свежем запуске"); }
+if (!ok) {
+  const v1 = win.video();
+  await Promise.race([app.close(), new Promise(r => setTimeout(r, 15000))]); try { process.kill(app.process().pid, "SIGKILL"); } catch {}
+  try { copyFileSync(await v1.path(), join(RAW, "app-live.webm")); } catch {}
+  app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
+  win = await app.firstWindow({ timeout: 90e3 });
+  await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); w.show(); });
+  await win.waitForTimeout(3000);
+}
 // 2. Архив и вопрос к архиву
 await nav("archive"); mark("archive"); await shot("app-archive");
 await win.fill("#ask-q", process.env.ASK_Q || "О чём говорили на встречах?"); await win.click("#ask-go"); mark("ask");
