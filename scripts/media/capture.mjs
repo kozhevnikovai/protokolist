@@ -16,8 +16,9 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 // 0. Первый запуск: выбор модели под компьютер (local-ai) и загрузка с прогрессом
 {
   const fresh = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env, PROTOKOLIST_HOME: "/tmp/pk-fresh" }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
+  const w = await fresh.firstWindow({ timeout: 90e3 });
   await fresh.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); });
-  const w = await fresh.firstWindow(); await w.waitForSelector("#v-setup:not([hidden])", { timeout: 30e3 }); await w.waitForTimeout(1500);
+  await w.waitForSelector("#v-setup:not([hidden])", { timeout: 30e3 }); await w.waitForTimeout(1500);
   await snap(fresh, w, join(OUT, "app-setup.png")); log("снимок app-setup");
   await w.click("#dl"); await w.waitForTimeout(25e3);
   await snap(fresh, w, join(OUT, "app-download.png")); log("снимок app-download");
