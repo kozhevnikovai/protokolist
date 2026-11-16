@@ -6,7 +6,7 @@
 
 Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meetings and produces minutes: decisions, action items with owners and due dates, open questions. **Everything runs on your computer — audio and text never leave it.** Built Russian-first; runs on an ordinary laptop without a GPU. Windows, macOS (beta), Claude Desktop extension and CLI.
 
-<p align="center"><img src="docs/img/demo.gif" alt="Recording: live captions, «What did I miss?», minutes" width="100%"></p>
+<p align="center"><img src="docs/img/demo.gif" alt="Recording with live captions" width="100%"></p>
 
 <sub>Real app run in CI: the audio is fed as computer sound, like a Zoom call. Voices are three readers from the open Russian LibriSpeech set (LibriVox audiobooks, public domain), not a real meeting, so the minutes honestly say there were no decisions or tasks. Video: [docs/video/promo.mp4](docs/video/promo.mp4).</sub>
 
@@ -30,7 +30,7 @@ Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meeti
 
 Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Kaiten, Yandex Tracker, Telegram, Pachca, Obsidian notes (PII masked before sending). Known voices (opt-in): a participant named once is recognized in later meetings. Meeting series: the protocol lists last meeting's tasks with status. Local search across all meetings. Long recordings (up to 8 hours) are processed in parts, the summary covers the whole meeting.
 
-<p align="center"><img src="docs/img/app-live.jpg" width="49%"> <img src="docs/img/app-ask.jpg" width="49%"></p>
+<p align="center"><img src="docs/img/app-live.jpg" width="49%"> <img src="docs/img/app-archive.jpg" width="49%"></p>
 
 ## FAQ
 
