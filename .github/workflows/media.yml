@@ -1,0 +1,51 @@
+name: media
+# Скриншоты и записи настоящей работы приложения. Звук — фразы дикторов Russian LibriSpeech (общественное достояние)
+on:
+  workflow_dispatch:
+  push:
+    branches: ['media/**']
+    paths: ['.github/workflows/media.yml', 'scripts/media/**']
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PROTOKOLIST_HOME: /home/runner/pk
+      PROTOKOLIST_OUT: /home/runner/meetings
+      PROTOKOLIST_GPU: cpu
+      PROTOKOLIST_LLM_MODEL: qwen3-14b
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci && npm run build
+      - uses: actions/cache@v6
+        with: { path: ~/.pk/models, key: asr-models-v1 }
+      - uses: actions/cache@v6
+        with: { path: ~/pk/models/llm, key: llm-qwen3-14b-v1 }
+      - name: Модели
+        run: |
+          mkdir -p ~/pk/models && cp -rn ~/.pk/models/. ~/pk/models/ 2>/dev/null || true
+          node dist/cli.js models --model qwen3-14b
+      - name: Звук из открытого набора речи
+        run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
+          pip install -q datasets soundfile numpy
+          mkdir -p src-audio
+          python3 scripts/media/assemble.py src-audio/b.wav 300,700,1100 7
+          python3 scripts/media/assemble.py src-audio/live.wav 150,500,900 6
+          ffmpeg -v error -i src-audio/live.wav -ac 1 -ar 16000 -f s16le src-audio/live.pcm
+      - name: Протоколы двух записей
+        run: |
+          node dist/cli.js test/audio/meeting-3-speakers.ogg --date 2026-11-09
+          node dist/cli.js src-audio/b.wav --date 2026-11-12
+      - run: npx playwright-core install ffmpeg
+      - name: Съёмка приложения
+        run: LIVE_PCM=src-audio/live.pcm xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/media/capture.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: media
+          path: |
+            media/
+            /home/runner/meetings/

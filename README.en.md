@@ -6,9 +6,17 @@
 
 Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meetings and produces minutes: decisions, action items with owners and due dates, open questions. **Everything runs on your computer — audio and text never leave it.** Built Russian-first; runs on an ordinary laptop without a GPU. Windows, macOS (beta), Claude Desktop extension and CLI.
 
-<p align="center"><img src="docs/img/protocol.png" alt="Minutes with decisions, tasks, due dates and timecodes" width="100%"></p>
+<p align="center"><img src="docs/img/demo.gif" alt="Recording with live captions" width="100%"></p>
 
-## Highlights
+<sub>Real app run in CI: the audio is fed as computer sound, like a Zoom call. Voices are three readers from the open Russian LibriSpeech set (LibriVox audiobooks, public domain), not a real meeting, so the minutes honestly say there were no decisions or tasks. Video: [docs/video/promo.mp4](docs/video/promo.mp4).</sub>
+
+## Install in 3 steps
+
+1. Download the Windows or macOS installer from the [latest release](https://github.com/kozhevnikovai/protokolist/releases/latest). Windows may warn about an unknown publisher: More info → Run anyway.
+2. On first launch pick a model: Protokolist suggests light or strong based on your RAM and downloads it once.
+3. Press Record before the meeting and Stop after it. The minutes are ready in a few minutes.
+
+## Features
 
 - **Verifiable privacy.** A "Network: 0 bytes" counter in the window; strict offline mode is on by default. Data leaves the machine only when you press "→ Bitrix24" or enable a cloud model.
 - **Every action item is backed by a quote and a timecode** — click to play the recording from that moment. Items the model couldn't ground in the transcript are flagged "verify" instead of being presented as fact.
@@ -22,7 +30,19 @@ Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meeti
 
 Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Kaiten, Yandex Tracker, Telegram, Pachca, Obsidian notes (PII masked before sending). Known voices (opt-in): a participant named once is recognized in later meetings. Meeting series: the protocol lists last meeting's tasks with status. Local search across all meetings. Long recordings (up to 8 hours) are processed in parts, the summary covers the whole meeting.
 
-## Install
+<p align="center"><img src="docs/img/app-live.jpg" width="49%"> <img src="docs/img/app-archive.jpg" width="49%"></p>
+
+## FAQ
+
+**Is it free?** Yes for one person, MIT license.
+
+**Does the recording go online?** No. Recognition and minutes run on your computer; the «Network: 0 bytes» counter shows it.
+
+**Do I need a GPU?** No. A regular laptop with 8 GB RAM runs the light model.
+
+**What if nothing was decided?** Protokolist says so. Every decision and task must be backed by a quote from the transcript.
+
+## Other ways to install
 
 - **App:** download the installer from the [latest release](https://github.com/kozhevnikovai/protokolist/releases/latest) (`.exe` for Windows, `.dmg` for macOS 14.2+). Builds are not code-signed yet: on Windows choose "More info → Run anyway"; on macOS use "System Settings → Privacy & Security → Open Anyway". Models (≈3–7 GB depending on the chosen model) download once on first launch.
 - **Claude Desktop:** open the `.mcpb` from the release. Transcription runs locally, Claude writes the minutes, Protokolist verifies them against quotes.

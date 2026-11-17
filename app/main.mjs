@@ -56,20 +56,32 @@ const pending = new Map();
 let seq = 0;
 
 function startWorker() {
-  worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "inherit" });
-  worker.on("message", m => {
+  const w = worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "inherit" });
+  w.on("message", m => {
     if (m.type === "progress" || m.type === "net" || m.type === "live" || m.type === "live-text") return win?.webContents.send(m.type, m);
     const p = pending.get(m.id);
     if (!p) return;
     pending.delete(m.id);
     m.error ? p.reject(new Error(m.error)) : p.resolve(m.result);
   });
-  worker.on("exit", () => { for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
+  w.on("exit", () => { if (worker !== w) return; for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
 }
-function call(method, args) {
+// После языковой модели и живых субтитров обработчик держит потоки llama.cpp и распознавателей;
+// разбор голосов (onnxruntime) в том же процессе может зависнуть — запись разбираем в свежем процессе.
+let used = false;
+const HEAVY = new Set(["liveStart", "catchUp", "ask", "protocol"]);
+async function recycle() {
+  const w = worker; if (!w || [...pending.values()].some(p => p.method === "download")) return; // загрузку моделей не прерываем
+  for (const p of pending.values()) p.reject(new Error("Обработчик перезапущен")); pending.clear();
+  worker = null;
+  await new Promise(r => { w.once("exit", r); w.kill(); setTimeout(r, 5000); });
+}
+async function call(method, args) {
+  if (method === "transcribe" && used) { used = false; await recycle(); }
+  if (HEAVY.has(method)) used = true;
   if (!worker) startWorker();
   const id = ++seq;
-  return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); worker.postMessage({ id, method, args, secrets: secrets() }); });
+  return new Promise((resolve, reject) => { pending.set(id, { resolve, reject, method }); worker.postMessage({ id, method, args, secrets: secrets() }); });
 }
 
 function createWindow() {
