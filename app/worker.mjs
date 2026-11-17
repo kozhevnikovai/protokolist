@@ -1,6 +1,6 @@
 // Фоновый процесс: распознавание и протокол не тормозят окно. Методы вызываются из главного процесса.
 import * as core from "../dist/index.js";
-import { listMeetings, listTasks, load, searchMeetings, hitLine } from "../dist/archive.js";
+import { brokenMeetings, listMeetings, listTasks, load, searchMeetings, hitLine } from "../dist/archive.js";
 
 const port = process.parentPort;
 const progress = (stage, done, total) => port.postMessage({ type: "progress", stage, done, total });
@@ -17,7 +17,15 @@ async function getLlm() {
   return llmBusy;
 }
 let freeing = null; // выгрузка модели идёт асинхронно — распознавание ждёт её, чтобы не делить память и ядра
-async function freeLlm() { const m = llm; llm = null; if (m) freeing = m.dispose().catch(() => {}).finally(() => { freeing = null; }); await freeing; }
+async function freeLlm() {
+  // модель ещё загружается (например, остановили запись во время «Что я пропустил?») — дожидаемся и сразу выгружаем,
+  // иначе она останется в памяти на время распознавания
+  if (llmBusy) { try { await llmBusy; } catch { /* загрузка не удалась — выгружать нечего */ } }
+  const m = llm; llm = null;
+  if (m) freeing = m.dispose().catch(() => {}).finally(() => { freeing = null; });
+  await freeing;
+}
+const catchUps = new Set(); // идущие пересказы: остановка записи их отменяет
 const stops = new Map();
 let hw = null; // характеристики компьютера: llama.cpp определяет видеокарту один раз
 async function models(c) {
@@ -78,6 +86,9 @@ const methods = {
   forgetVoice({ name }) { return core.forgetVoice(name); },
   forgetAllVoices() { core.forgetAllVoices(); return true; },
   list() { return listMeetings(core.loadConfig().outputDir); },
+  broken() { return brokenMeetings(core.loadConfig().outputDir); },
+  /** Проверка целостности скачанных моделей (результат кэшируется до изменения файлов) */
+  async verifyModels() { if (downloading) return []; return core.verify(); },
   tasks() { return listTasks(core.loadConfig().outputDir); },
   liveStart() {
     const c = core.loadConfig();
@@ -96,17 +107,21 @@ const methods = {
   liveStop() {
     if (!live) return [];
     const l = live; live = null;
+    for (const ac of catchUps) ac.abort();
     l.me.finish(); l.others.finish();
     freeLlm();
     return l.lines;
   },
   async catchUp({ minutes, key }) {
     if (!live) throw new Error("Пересказ работает во время записи с субтитрами");
-    const ac = new AbortController(); stops.set(key, ac);
+    const session = live; // запись могут остановить, пока грузится модель — работаем с этой сессией, а не с общей переменной
+    const ac = new AbortController(); stops.set(key, ac); catchUps.add(ac);
+    const stopped = () => Object.assign(new Error("Запись остановлена — пересказ отменён"), { name: "AbortError" });
     try {
       const m = await getLlm();
-      return await core.catchUp(live.lines, m, { minutes: Math.min(30, Math.max(1, Number(minutes) || 5)), signal: ac.signal, onText: t => port.postMessage({ type: "live-text", key, text: t }) });
-    } finally { stops.delete(key); }
+      if (ac.signal.aborted || live !== session) throw stopped();
+      return await core.catchUp(session.lines.slice(), m, { minutes: Math.min(30, Math.max(1, Number(minutes) || 5)), signal: ac.signal, onText: t => port.postMessage({ type: "live-text", key, text: t }) });
+    } finally { stops.delete(key); catchUps.delete(ac); }
   },
   async ask({ question, key }) {
     const q = String(question ?? "").trim().slice(0, 500);

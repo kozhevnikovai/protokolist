@@ -35,5 +35,5 @@
   "user_config": {
     "output_dir": { "type": "directory", "title": "Папка для протоколов", "description": "Оставьте пустой — Документы/Протоколист", "required": false, "default": "" }
   },
-  "compatibility": { "platforms": ["win32", "darwin"], "runtimes": { "node": ">=20.0.0" } }
+  "compatibility": { "platforms": ["win32", "darwin"], "runtimes": { "node": ">=22.12.0" } }
 }

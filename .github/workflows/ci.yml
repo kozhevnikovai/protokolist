@@ -1,5 +1,9 @@
 name: ci
-on: [push, pull_request]
+# push — только main и release/*, ветки проверяются через pull_request: один прогон на коммит вместо двух (очередь macOS короче)
+on:
+  push: { branches: [main, "release/**"] }
+  pull_request:
+  workflow_dispatch:
 jobs:
   test:
     strategy:

@@ -16,7 +16,7 @@ export { listVoices, learnVoices, matchVoices, forgetVoice, forgetAllVoices, typ
 export { listSeries, previousMeeting, carryOver, setTaskDone, findMention } from "./series.js";
 export { run, finish, deliver, FORMATS, type RunOptions, type RunResult } from "./pipeline.js";
 export { loadConfig, saveConfig, rawConfig, configFile, setSecrets, SECRET_KEYS, getPath, setPath, type Config } from "./config.js";
-export { download, missing, plan, totalSize, PACKS, homeDir, modelsDir, selectLlm, LLM_MODELS } from "./models.js";
+export { download, missing, verify, plan, totalSize, PACKS, homeDir, modelsDir, selectLlm, LLM_MODELS } from "./models.js";
 export { detectHardware, recommend } from "@kozhevnikovai/local-ai";
 export { netStats, setOffline, isOffline } from "./net.js";
 export { VERSION } from "./version.js";

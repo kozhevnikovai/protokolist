@@ -21,7 +21,8 @@ jobs:
       - uses: actions/cache@v6
         with: { path: ~/pk/models/llm, key: "llm-${{ matrix.model }}-v1" }
       - run: node dist/cli.js models --model ${{ matrix.model }}
-      - run: npm run eval || echo "::warning::${{ matrix.model }} ниже порога"
+      # модели каталога обязаны проходить порог (красный job), кандидаты из ручного списка — только предупреждение
+      - run: npm run eval || { if [ -z "${{ inputs.models }}" ]; then echo "::error::${{ matrix.model }} ниже порога"; exit 1; else echo "::warning::${{ matrix.model }} ниже порога"; fi; }
       - uses: actions/upload-artifact@v7
         if: always()
         with: { name: "evals-${{ matrix.model }}", path: evals/results.json }

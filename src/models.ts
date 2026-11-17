@@ -1,6 +1,6 @@
 // Локальные модели: где лежат, откуда скачать, проверка наличия.
 import { existsSync, statSync } from "node:fs";
-import { DEFAULTS, downloadFiles, getModel, MODELS, checkSpace, totalSize as engineTotal, type ModelFile } from "@kozhevnikovai/local-ai";
+import { DEFAULTS, downloadFiles, getModel, MODELS, checkSpace, totalSize as engineTotal, verifyFiles, type ModelFile } from "@kozhevnikovai/local-ai";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { netFetch } from "./net.js";
@@ -85,4 +85,12 @@ export { checkSpace };
 export async function download(packs = Object.keys(PACKS), onProgress?: Progress): Promise<void> {
   const files = packs.flatMap(id => PACKS[id].files);
   await downloadFiles(files, { dir: modelsDir(), onProgress, fetch: (url, init) => netFetch("model-download", url, init) });
+}
+
+/**
+ * Проверка SHA-256 уже скачанных моделей. Первый раз считается для каждого файла (несколько секунд),
+ * потом запоминается до изменения файла. Повреждённый файл удаляется — его нужно скачать заново.
+ */
+export async function verify(packs = Object.keys(PACKS)): Promise<string[]> {
+  return (await verifyFiles(modelsDir(), packs.flatMap(id => PACKS[id].files))).map(f => f.path);
 }

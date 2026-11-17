@@ -1,6 +1,6 @@
 // Полный цикл: аудио → стенограмма → протокол → файлы (+ интеграции по желанию).
 import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, extname, join } from "node:path";
+import { basename, extname, join, resolve } from "node:path";
 import { analyze } from "./analytics.js";
 import { mixTo } from "./audio.js";
 import type { Config } from "./config.js";
@@ -40,6 +40,25 @@ export interface RunOptions extends Omit<TranscribeOptions, "glossary" | "onProg
 
 export interface RunResult { dir: string; files: string[]; meeting: Meeting; sent: SendResult[]; netBytes: number }
 
+/** Дата встречи для имени папки: только ГГГГ-ММ-ДД, иначе — сегодня (защита от «../» в дате из чужого файла) */
+export const safeDate = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? d : new Date().toISOString().slice(0, 10));
+
+/**
+ * Новая папка встречи. Папка создаётся атомарно: если встреча с той же датой и названием уже есть
+ * (две «Планёрки» в один день), берётся «… (2)», «… (3)» — прежняя встреча не перезаписывается.
+ */
+export function newMeetingDir(root: string, date: string, name: string): string {
+  mkdirSync(root, { recursive: true });
+  const base = `${safeDate(date)} ${name}`;
+  for (let i = 1; i < 1000; i++) {
+    const dir = join(root, i === 1 ? base : `${base} (${i})`);
+    if (resolve(dir) !== join(resolve(root), basename(dir))) throw new Error("Недопустимое имя папки встречи");
+    try { mkdirSync(dir); return dir; }
+    catch (e: any) { if (e.code !== "EEXIST") throw e; }
+  }
+  throw new Error("Слишком много встреч с одинаковым названием за день");
+}
+
 const slug = (s: string) => s.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "встреча";
 
 export async function run(file: string, o: RunOptions): Promise<RunResult> {
@@ -72,8 +91,8 @@ export async function finish(tr: Transcript, audioFile: string | null, o: RunOpt
     } finally { await llm.dispose(); }
   }
   const title = meeting.protocol?.title ?? basename(tr.source, extname(tr.source));
-  const dir = o.outDir ?? join(c.outputDir, `${tr.date} ${slug(title)}`);
-  try { mkdirSync(dir, { recursive: true }); }
+  let dir: string;
+  try { dir = o.outDir ? (mkdirSync(o.outDir, { recursive: true }), o.outDir) : newMeetingDir(c.outputDir, tr.date, slug(title)); }
   catch (e: any) { throw new Error(/EACCES|EPERM|EROFS/.test(e.code) ? `Нет доступа к папке протоколов «${c.outputDir}». Выберите другую папку в настройках.` : e.code === "ENOSPC" ? "На диске закончилось место" : e.message); }
   const files: string[] = [];
   const put = (name: string, data: string | Buffer) => { const p = join(dir, name); writeFileSync(p, data); files.push(p); return p; };

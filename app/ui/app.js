@@ -71,6 +71,8 @@ async function init() {
   $("#tpl").innerHTML = opts;
   $("#tpl-def").innerHTML = opts;
   renderModels(st);
+  // целостность моделей проверяется в фоне: повреждённый файл удаляется и предлагается скачать заново
+  pk.core("verifyModels").then(bad => { if (bad?.length) toast(`Файл модели повреждён и удалён: ${bad.join(", ")}. Скачайте модели заново в «Настройках».`, "err", 12000); }).catch(() => {});
   $("#packs").innerHTML = st.packs.map(p => `<li><span>${esc(p.title)}<small> · лицензия ${esc(p.license)}</small></span><b>${p.missing ? size(p.size) : "✓ скачано"}</b></li>`).join("");
   $("#dl-total").textContent = st.left ? `осталось ${size(st.left)} из ≈ ${size(st.packs.reduce((a, p) => a + p.size, 0))}` : "всё скачано";
   setReady(!st.missing.length);
@@ -569,6 +571,8 @@ async function loadArchive() {
   try { ms = await pk.core("list"); } catch (e) { toast("Не удалось открыть папку протоколов: " + e.message, "err"); }
   $("#meetings").innerHTML = ms.length ? `<tr><th>Дата</th><th>Встреча</th><th>Длит.</th><th>Задач</th></tr>${ms.map(m => `<tr data-file="${esc(m.file)}"><td>${ruDate(m.date)}</td><td>${esc(m.title)}</td><td>${fmt(m.duration)}</td><td>${m.tasks}</td></tr>`).join("")}` : `<tr><td>Пока нет встреч. Запишите первую.</td></tr>`;
   $$("#meetings tr[data-file]").forEach(tr => tr.addEventListener("click", () => pk.open(tr.dataset.file)));
+  const bad = await pk.core("broken").catch(() => []);
+  if (bad.length) toast(`Не удалось прочитать ${bad.length === 1 ? "встречу" : "встречи"}: ${bad.slice(0, 3).join(", ")}${bad.length > 3 ? "…" : ""}. Файл встреча.json в папке повреждён — остальные встречи доступны.`, "err", 10000);
 }
 let qt, qn = 0;
 $("#q").addEventListener("input", e => {
