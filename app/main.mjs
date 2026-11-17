@@ -55,8 +55,21 @@ let worker;
 const pending = new Map();
 let seq = 0;
 
+// Журнал обработчика: код выхода, сигнал и последние строки ошибок — иначе молчаливое падение не разобрать
+const workerLog = () => join(app.getPath("logs"), "worker.log");
+function logWorker(line) { try { mkdirSync(app.getPath("logs"), { recursive: true }); appendFileSync(workerLog(), `${new Date().toISOString()} ${line}\n`); } catch { /* журнал не важнее работы */ } console.error("[worker] " + line); }
+/** Понятная причина по коду выхода */
+function exitReason(code) {
+  if (code === 137 || code === 9) return "не хватило памяти или процесс остановлен системой";
+  if (code === 139 || code === 11 || code === 134 || code === 6 || code === 3221225477) return "сбой библиотеки распознавания или языковой модели";
+  return "";
+}
 function startWorker() {
-  const w = worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "inherit" });
+  const w = worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "pipe" });
+  let tail = "";
+  const keep = (dst) => b => { dst.write(b); tail = (tail + b.toString()).slice(-4000); };
+  w.stdout?.on("data", keep(process.stdout)); w.stderr?.on("data", keep(process.stderr));
+  w.on("error", (type, location) => logWorker(`ошибка процесса: ${type} ${location ?? ""}`));
   w.on("message", m => {
     if (m.type === "progress" || m.type === "net" || m.type === "live" || m.type === "live-text") return win?.webContents.send(m.type, m);
     const p = pending.get(m.id);
@@ -64,7 +77,14 @@ function startWorker() {
     pending.delete(m.id);
     m.error ? p.reject(new Error(m.error)) : p.resolve(m.result);
   });
-  w.on("exit", () => { if (worker !== w) return; for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
+  w.on("exit", code => {
+    if (worker !== w) return;
+    const methods = [...pending.values()].map(p => p.method).join(", ") || "—";
+    const why = exitReason(code);
+    logWorker(`обработчик завершился: код ${code}${why ? " (" + why + ")" : ""}, вызовы: ${methods}\n${tail.trim().split("\n").slice(-20).join("\n")}`);
+    for (const p of pending.values()) p.reject(new Error(`Обработчик завершился${why ? ": " + why : ""} (код ${code}). Подробности — в журнале ${workerLog()}. Попробуйте ещё раз`));
+    pending.clear(); worker = null;
+  });
 }
 // После языковой модели и живых субтитров обработчик держит потоки llama.cpp и распознавателей;
 // разбор голосов (onnxruntime) в том же процессе может зависнуть — запись разбираем в свежем процессе.
@@ -74,7 +94,9 @@ async function recycle() {
   const w = worker; if (!w || [...pending.values()].some(p => p.method === "download")) return; // загрузку моделей не прерываем
   for (const p of pending.values()) p.reject(new Error("Обработчик перезапущен")); pending.clear();
   worker = null;
-  await new Promise(r => { w.once("exit", r); w.kill(); setTimeout(r, 5000); });
+  const gone = await new Promise(r => { w.once("exit", () => r(true)); w.kill(); setTimeout(() => r(false), 5000); });
+  // старый процесс держит модель в памяти — не начинаем разбор рядом с ним
+  if (!gone && w.pid) { try { process.kill(w.pid, "SIGKILL"); } catch { /* уже завершился */ } await new Promise(r => setTimeout(r, 1000)); }
 }
 async function call(method, args) {
   if (method === "transcribe" && used) { used = false; await recycle(); }
