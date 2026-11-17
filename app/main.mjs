@@ -89,8 +89,8 @@ app.on("before-quit", () => { quitting = true; });
 /** Один раз показываем, что программа продолжает работать в трее */
 function trayHintOnce() {
   const flag = join(app.getPath("userData"), "tray-hint-shown");
-  if (existsSync(flag)) return;
-  try { writeFileSync(flag, new Date().toISOString()); } catch { /* не критично */ }
+  // создаём отметку атомарно: если она уже есть, подсказку не показываем
+  try { writeFileSync(flag, new Date().toISOString(), { flag: "wx" }); } catch { return; }
   const body = process.platform === "darwin" ? "Протоколист продолжает работать в строке меню — запись не прерывается. Выйти: меню значка → «Выйти»." : "Протоколист продолжает работать в трее — запись не прерывается. Выйти: правой кнопкой по значку → «Выйти».";
   if (Notification.isSupported()) new Notification({ title: "Протоколист свёрнут", body, icon: join(here, "ui", "icon.png") }).show();
 }
