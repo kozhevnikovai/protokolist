@@ -3,8 +3,8 @@
 <p align="center">
 <a href="https://github.com/kozhevnikovai/protokolist/actions/workflows/ci.yml"><img src="https://github.com/kozhevnikovai/protokolist/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 <a href="https://github.com/kozhevnikovai/protokolist/releases/latest"><img src="https://img.shields.io/github/v/release/kozhevnikovai/protokolist?label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&color=161616" alt="Версия"></a>
-<img src="https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-MIT-161616" alt="MIT">
-<img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20(%D0%B1%D0%B5%D1%82%D0%B0)%20%C2%B7%20Claude%20Desktop%20%C2%B7%20CLI-FF5A1F" alt="Windows, macOS, Claude Desktop, CLI">
+<img src="https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-MIT-16181D" alt="MIT">
+<img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20(%D0%B1%D0%B5%D1%82%D0%B0)%20%C2%B7%20Claude%20Desktop%20%C2%B7%20CLI-5E6470" alt="Windows, macOS, Claude Desktop, CLI">
 </p>
 
 <p align="center"><b>Русский</b> · <a href="README.en.md">English</a></p>
