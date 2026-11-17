@@ -1,0 +1,11 @@
+import * as core from "../../dist/index.js";
+const say = m => process.parentPort.postMessage(m);
+const ctx = Number(process.env.PROBE_CTX);
+say("загрузка модели");
+const m = await core.createLLM({ ...core.loadConfig().llm, contextSize: ctx });
+say("модель загружена");
+const t = await m.text("Отвечай кратко.", "Перечисли три дня недели.", 40);
+say("ответ: " + t.replace(/\s+/g, " ").slice(0, 60));
+await m.dispose();
+say("выгружена");
+process.exit(0);
