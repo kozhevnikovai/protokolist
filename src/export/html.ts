@@ -14,8 +14,8 @@ const ruDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}
 function fontFaces(): string {
   const CYR = "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116", LAT = "U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-2193";
   const f: [string, string, string, number, string][] = [
-    ["Geologica", "@fontsource/geologica", "geologica-cyrillic-400-normal.woff2", 400, CYR], ["Geologica", "@fontsource/geologica", "geologica-latin-400-normal.woff2", 400, LAT],
-    ["Geologica", "@fontsource/geologica", "geologica-cyrillic-600-normal.woff2", 600, CYR], ["Geologica", "@fontsource/geologica", "geologica-latin-600-normal.woff2", 600, LAT],
+    ["Onest", "@fontsource/onest", "onest-cyrillic-400-normal.woff2", 400, CYR], ["Onest", "@fontsource/onest", "onest-latin-400-normal.woff2", 400, LAT],
+    ["Onest", "@fontsource/onest", "onest-cyrillic-600-normal.woff2", 600, CYR], ["Onest", "@fontsource/onest", "onest-latin-600-normal.woff2", 600, LAT],
   ];
   return f.map(([fam, pkg, file, w, r]) => {
     try { return `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${readFileSync(require.resolve(`${pkg}/files/${file}`)).toString("base64")}) format("woff2");unicode-range:${r}}`; } catch { return ""; }
@@ -23,21 +23,21 @@ function fontFaces(): string {
 }
 
 const CSS = `
-:root{--bg:#FBFBFA;--card:#fff;--ink:#1A1A19;--pencil:#5C5C57;--line:#E8E8E5;--plate:#F1F1EE;--acc:#C2410C;--ok:#1F7A4A;--okbg:#E7F3EC;--warn:#9A5B00;--warnbg:#FFF3DF;--bad:#B3261E;--badbg:#FCE9E7}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Geologica,"Segoe UI",system-ui,sans-serif}
+:root{--bg:#F4F5F7;--card:#fff;--ink:#16181D;--pencil:#5E6470;--line:#E3E6EA;--plate:#F0F2F5;--acc:#2E5BDB;--ok:#1F7A4A;--okbg:#E7F3EC;--warn:#9A5B00;--warnbg:#FFF3DF;--bad:#B3261E;--badbg:#FCE9E7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Onest,"Segoe UI",system-ui,sans-serif}
 .sheet{max-width:980px;margin:32px auto;padding:0 20px 40px}
 .mono,.tc{font-variant-numeric:tabular-nums}
 .kicker{font-size:13px;font-weight:600;color:var(--acc);display:flex;align-items:center;gap:8px}
 h1{font-size:30px;line-height:1.2;margin:8px 0 8px;font-weight:600;letter-spacing:-.01em}h2{font-size:18px;margin:0 0 12px;font-weight:600}h2 .n{display:none}h3{font-size:15px;margin:16px 0 6px}
 .meta{color:var(--pencil);font-size:14px}.axis{display:none}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0 8px}.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}.tile b{display:block;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}.tile span{font-size:13px;color:var(--pencil)}.tile.warn b{color:var(--warn)}
 .summary{font-size:16px;margin:0}
 ol,ul{padding-left:22px;margin:0}li{margin:4px 0}
 table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:var(--plate);color:var(--pencil);font-weight:600;font-size:13px}tr:last-child td{border-bottom:0}
 .tc{font-size:12px;color:var(--ink);background:var(--plate);padding:2px 8px;cursor:pointer;border:0;border-radius:999px;white-space:nowrap;font-family:inherit}.tc:hover{background:var(--acc);color:#fff}
 .review{color:var(--bad);font-size:12px;font-weight:600}.tc.bad{background:var(--badbg);color:var(--bad)}
-.bars div{display:grid;grid-template-columns:160px 1fr 60px;gap:12px;align-items:center;margin:8px 0}.bars i{display:block;height:10px;border-radius:5px;background:#A8A8A2}.bars i.me{background:var(--acc)}
+.bars div{display:grid;grid-template-columns:160px 1fr 60px;gap:12px;align-items:center;margin:8px 0}.bars i{display:block;height:8px;border-radius:4px;background:#B8BEC8}.bars i.me{background:var(--ink)}
 .tr p{margin:6px 0}.tr b{font-weight:600}.tr .hide{display:none}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tools input{flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;background:#fff}.tools input:focus{outline:2px solid var(--acc);outline-offset:1px}
 button.b{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 14px;font:inherit;cursor:pointer}button.b:hover{background:var(--plate)}

@@ -23,6 +23,7 @@ function show(view) {
   state.view = view;
   $$("main > section").forEach(s => (s.hidden = s.id !== "v-" + view));
   $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  const k = $("#v-" + view + " .kicker"); if (k && $("#crumb")) $("#crumb").textContent = k.textContent;
   if (view === "archive") loadArchive();
   if (view === "tasks") loadTasks();
   if (view === "settings") fillSettings();
