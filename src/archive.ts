@@ -1,6 +1,6 @@
 // Архив встреч: папки в каталоге протоколов, в каждой — встреча.json. Поиск по всем встречам локально.
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { join, relative, isAbsolute } from "node:path";
 import type { Meeting } from "./export/text.js";
 import { fmtTime, speakerLabel } from "./transcribe.js";
 
@@ -8,12 +8,33 @@ export interface ArchiveItem { id: string; dir: string; date: string; title: str
 
 const mainFile = (dir: string) => ["протокол.html", "стенограмма.html"].map(f => join(dir, f)).find(existsSync) ?? dir;
 
-export function listMeetings(root: string): ArchiveItem[] {
+/** Папки встреч: только настоящие папки внутри архива — без символических ссылок и junction */
+function meetingDirs(root: string): string[] {
   if (!existsSync(root)) return [];
-  return readdirSync(root).map(name => join(root, name)).filter(d => existsSync(join(d, "встреча.json")) && statSync(d).isDirectory()).map(dir => {
-    const m = load(dir);
-    return { id: dir.split(/[\\/]/).pop()!, dir, date: m.transcript.date, title: m.protocol?.title ?? m.transcript.source, ...(m.series ? { series: m.series } : {}), tasks: m.protocol?.tasks.length ?? 0, duration: m.transcript.duration, file: mainFile(dir) };
-  }).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const realRoot = realpathSync(root);
+  return readdirSync(root).map(name => join(root, name)).filter(d => {
+    try {
+      const st = lstatSync(d);
+      if (!st.isDirectory() || st.isSymbolicLink() || !existsSync(join(d, "встреча.json"))) return false;
+      const r = relative(realRoot, realpathSync(d));
+      return !!r && !r.startsWith("..") && !isAbsolute(r);
+    } catch { return false; }
+  });
+}
+
+/** Папки, где встреча.json повреждён: они пропускаются, остальной архив работает */
+export function brokenMeetings(root: string): string[] {
+  return meetingDirs(root).filter(d => { try { load(d); return false; } catch { return true; } }).map(d => d.split(/[\\/]/).pop()!);
+}
+
+export function listMeetings(root: string): ArchiveItem[] {
+  const out: ArchiveItem[] = [];
+  for (const dir of meetingDirs(root)) {
+    let m: Meeting;
+    try { m = load(dir); if (!m?.transcript) throw new Error("нет стенограммы"); } catch { continue; /* повреждённая встреча не ломает архив — см. brokenMeetings */ }
+    out.push({ id: dir.split(/[\\/]/).pop()!, dir, date: m.transcript.date, title: m.protocol?.title ?? m.transcript.source, ...(m.series ? { series: m.series } : {}), tasks: m.protocol?.tasks.length ?? 0, duration: m.transcript.duration ?? 0, file: mainFile(dir) });
+  }
+  return out.sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id.localeCompare(a.id));
 }
 
 export const load = (dir: string): Meeting => JSON.parse(readFileSync(join(dir, "встреча.json"), "utf8"));
@@ -39,7 +60,8 @@ export function searchMeetings(root: string, query: string, limit = 30): Hit[] {
   const match = (s: string) => { const t = s.toLowerCase().replace(/ё/g, "е"); return words.every(w => t.includes(w)); };
   const hits: Hit[] = [];
   for (const it of listMeetings(root)) {
-    const m = load(it.dir);
+    let m: Meeting;
+    try { m = load(it.dir); } catch { continue; }
     const base = { id: it.id, date: it.date, title: it.title, file: it.file };
     for (const d of m.protocol?.decisions ?? []) if (match(d.text)) hits.push({ ...base, where: "решение", at: d.t, text: d.text });
     for (const t of m.protocol?.tasks ?? []) if (match(`${t.text} ${t.owner}`)) hits.push({ ...base, where: "задача", at: t.t, text: `${t.text} — ${t.owner || "?"}${t.due ? `, до ${t.due}` : ""}` });

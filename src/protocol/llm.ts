@@ -54,19 +54,15 @@ function openai(o: LLMOptions): LLM {
   };
   return {
     name: `${o.model} · облако (${new URL(url).host})`,
-    async json<T>(system: string, user: string, schema: object, maxTokens = 3000) {
-      const body = JSON.stringify({
-        model: o.model, temperature: 0.1, max_tokens: maxTokens,
+    async json<T>(system: string, user: string, schema: object, maxTokens = 3000, opts: { signal?: AbortSignal } = {}) {
+      const text = await chat({
+        temperature: 0.1, max_tokens: maxTokens,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: `${system}\n\nОтветь только JSON по схеме:\n${JSON.stringify(schema)}` },
           { role: "user", content: user },
         ],
-      });
-      const res = await netFetch("cloud-llm", url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${o.apiKey ?? ""}` }, body });
-      if (!res.ok) throw new Error(`Облачная модель ответила ${res.status}: ${(await res.text()).slice(0, 300)}`);
-      const data: any = await res.json();
-      const text: string = data.choices?.[0]?.message?.content ?? "";
+      }, opts.signal);
       const m = text.match(/\{[\s\S]*\}/);
       if (!m) throw new Error("Облачная модель вернула не JSON");
       return JSON.parse(m[0]) as T;

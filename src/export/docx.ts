@@ -1,4 +1,4 @@
-// DOCX: деловой протокол (Arial) или официальный протокол по ГОСТ Р 7.0.97-2016 (Times New Roman 14).
+// DOCX: деловой протокол (Arial) или официальный протокол по ГОСТ Р 7.0.97-2025 (Times New Roman 14).
 import { AlignmentType, BorderStyle, Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
 import { getTemplate } from "../protocol/templates.js";
 import { fmtTime, speakerLabel } from "../transcribe.js";
@@ -73,7 +73,7 @@ function business(m: Meeting, p: Protocol, o: DocxOptions) {
   });
 }
 
-/** ГОСТ Р 7.0.97-2016: полная форма протокола */
+/** ГОСТ Р 7.0.97-2025: полная форма протокола */
 function gost(m: Meeting, p: Protocol, o: DocxOptions) {
   const C = AlignmentType.CENTER, J = AlignmentType.JUSTIFIED;
   const topics = p.topics.length ? p.topics : [{ title: p.title, speakers: [], points: [p.summary] }];
@@ -109,7 +109,7 @@ function gost(m: Meeting, p: Protocol, o: DocxOptions) {
     body.push(P("", { after: 120 }));
   });
   if (p.tasks.length) body.push(P("ПОРУЧЕНИЯ:", { bold: true }), tasksTable(p), P("", { after: 240 }));
-  const sign = (role: string, name?: string) => new Paragraph({ spacing: { before: 360 }, tabStops: [{ type: "left" as any, position: 4500 }, { type: "right" as any, position: 9350 }], children: [new TextRun(role), new TextRun("\t____________"), new TextRun(`\t${name || "И. О. Фамилия"}`)] });
+  const sign = (role: string, name?: string) => new Paragraph({ spacing: { before: 360 }, tabStops: [{ type: "left" as any, position: 4500 }, { type: "right" as any, position: 9350 }], children: [new TextRun(role), new TextRun("\t____________"), new TextRun(`\t${name || "И.О. Фамилия"}`)] });
   body.push(sign("Председатель", o.chair), sign("Секретарь", o.secretary));
   if (o.withTranscript) body.push(...transcript(m));
   return new Document({

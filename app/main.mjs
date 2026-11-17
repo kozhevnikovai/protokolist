@@ -84,6 +84,17 @@ async function call(method, args) {
   return new Promise((resolve, reject) => { pending.set(id, { resolve, reject, method }); worker.postMessage({ id, method, args, secrets: secrets() }); });
 }
 
+let quitting = false; // true — пользователь выбрал «Выйти»: окно закрывается по-настоящему
+app.on("before-quit", () => { quitting = true; });
+/** Один раз показываем, что программа продолжает работать в трее */
+function trayHintOnce() {
+  const flag = join(app.getPath("userData"), "tray-hint-shown");
+  if (existsSync(flag)) return;
+  try { writeFileSync(flag, new Date().toISOString()); } catch { /* не критично */ }
+  const body = process.platform === "darwin" ? "Протоколист продолжает работать в строке меню — запись не прерывается. Выйти: меню значка → «Выйти»." : "Протоколист продолжает работать в трее — запись не прерывается. Выйти: правой кнопкой по значку → «Выйти».";
+  if (Notification.isSupported()) new Notification({ title: "Протоколист свёрнут", body, icon: join(here, "ui", "icon.png") }).show();
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1180, height: 800, minWidth: 900, minHeight: 640, title: "Протоколист", backgroundColor: "#FFFFFF",
@@ -91,11 +102,18 @@ function createWindow() {
     webPreferences: { preload: join(here, "preload.cjs"), contextIsolation: true, sandbox: true },
   });
   win.removeMenu();
-  // закрытие во время записи или обработки — только с подтверждением
+  // крестик сворачивает в трей: запись, обработка и подсказка о встречах продолжаются; выход — «Выйти» в меню трея
   win.on("close", e => {
+    if (!quitting && tray && !process.env.PROTOKOLIST_SMOKE) {
+      e.preventDefault();
+      win.hide();
+      trayHintOnce();
+      return;
+    }
+    // выход во время записи или обработки — только с подтверждением
     if (!appState.recording && !appState.busy) return;
     const r = dialog.showMessageBoxSync(win, { type: "warning", buttons: ["Не закрывать", "Закрыть"], defaultId: 0, cancelId: 0, title: "Протоколист", message: appState.recording ? "Идёт запись встречи" : "Идёт обработка встречи", detail: appState.recording ? "Записанное уже сохранено на диск — при следующем запуске его можно будет восстановить. Всё равно закрыть?" : "Обработка прервётся. Запись останется, её можно обработать заново. Всё равно закрыть?" });
-    if (r === 0) e.preventDefault();
+    if (r === 0) { e.preventDefault(); quitting = false; }
   });
   win.loadFile(join(here, "ui", "index.html"));
   // ссылки из протоколов открываем в браузере, а не в окне приложения
@@ -335,4 +353,4 @@ async function smoke(file) {
   } catch (e) { fail(e); }
 }
 app.on("window-all-closed", () => { worker?.kill(); app.quit(); });
-app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+app.on("activate", () => { if (win && !win.isDestroyed()) { win.show(); win.focus(); } else createWindow(); });

@@ -56,18 +56,11 @@ mark("catch-done"); await shot("app-catch-up");
 const left = await win.evaluate(() => window.__demoEnds - Date.now()); if (left > 0) await win.waitForTimeout(left + 1500);
 await win.click("#rec"); mark("stop");
 await win.waitForTimeout(15000); await shot("app-processing");
-let ok = true;
-try { await win.waitForSelector("#v-result:not([hidden])", { timeout: 12 * 60e3 }); mark("result"); await shot("app-result"); }
-catch { ok = false; log("ВНИМАНИЕ: разбор после живой записи не завершился за 12 мин — съёмка продолжается на свежем запуске"); }
-if (!ok) {
-  const v1 = win.video();
-  await Promise.race([app.close(), new Promise(r => setTimeout(r, 15000))]); try { process.kill(app.process().pid, "SIGKILL"); } catch {}
-  try { copyFileSync(await v1.path(), join(RAW, "app-live.webm")); } catch {}
-  app = await electron.launch({ args: ["--no-sandbox", "app/main.mjs"], env: { ...process.env }, recordVideo: { dir: RAW, size: { width: 1280, height: 800 } } });
-  win = await app.firstWindow({ timeout: 90e3 });
-  await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1280, 800); w.center(); w.show(); });
-  await win.waitForTimeout(3000);
-}
+// после распознавания приложение ждёт подтверждения участников: нажимаем «Составить протокол», как пользователь
+await win.waitForSelector("#speakers:not([hidden])", { timeout: 12 * 60e3 }); mark("speakers"); await shot("app-speakers");
+await win.click("#make"); mark("make");
+// разбор обязан дойти до протокола: таймаут — это ошибка съёмки, а не повод продолжать на свежем запуске
+await win.waitForSelector("#v-result:not([hidden])", { timeout: 20 * 60e3 }); mark("result"); await shot("app-result");
 // 2. Архив и вопрос к архиву
 await nav("archive"); mark("archive"); await shot("app-archive");
 await win.fill("#ask-q", process.env.ASK_Q || "О чём говорили на встречах?"); await win.click("#ask-go"); mark("ask");

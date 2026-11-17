@@ -4,7 +4,7 @@
 
 # Protokolist — meeting recording → minutes, fully offline
 
-Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meetings and produces minutes: decisions, action items with owners and due dates, open questions. **Everything runs on your computer — audio and text never leave it.** Built Russian-first; runs on an ordinary laptop without a GPU. Windows, macOS (beta), Claude Desktop extension and CLI.
+Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meetings and produces minutes: decisions, action items with owners and due dates, open questions. **By default everything runs on your computer — audio and text never leave it.** A cloud model, Claude and sending tasks to services are turned on only by you. Built Russian-first; runs on an ordinary laptop without a GPU. Windows, macOS (beta), Claude Desktop extension and CLI.
 
 <p align="center"><img src="docs/img/demo.gif" alt="Recording with live captions" width="100%"></p>
 
@@ -25,7 +25,7 @@ Protokolist records Zoom, Yandex Telemost, Kontur.Talk, Teams or in-person meeti
 - **Recording is always visible**: a tray icon and an always-on-top "Recording" indicator; start/stop from any app with Ctrl+Alt+R (⌘⌥R on Mac).
 - **Live captions and "What did I miss?"** — captions in the recording window during the meeting; one click summarizes the last 2, 5 or 10 minutes and flags if someone addressed you. All on your computer.
 - **Ask your meeting archive** — "what did we decide on prices in October?" — answers only from found fragments, with links to meetings and timecodes; `protokolist ask <question>`, `ask_archive` in Claude Desktop.
-- **Official minutes per Russian standard GOST R 7.0.97-2016** in DOCX.
+- **Official minutes per Russian standard GOST R 7.0.97-2025** in DOCX.
 - **Russian ASR with GigaAM v3** (Sber, MIT): 3.7% WER and 98% speaker accuracy on the test recording, 8–9× faster than real time on a CPU.
 
 Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DOCX, Markdown, JSON, TXT, SRT, ICS. Integrations: Bitrix24, YouGile, Kaiten, Yandex Tracker, Telegram, Pachca, Obsidian notes (PII masked before sending). Known voices (opt-in): a participant named once is recognized in later meetings. Meeting series: the protocol lists last meeting's tasks with status. Local search across all meetings. Long recordings (up to 8 hours) are processed in parts, the summary covers the whole meeting.
@@ -36,7 +36,7 @@ Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DO
 
 **Is it free?** Yes for one person, MIT license.
 
-**Does the recording go online?** No. Recognition and minutes run on your computer; the «Network: 0 bytes» counter shows it.
+**Does the recording go online?** No by default. Recognition and minutes run on your computer; the «Network: 0 bytes» counter shows it. Text leaves the computer only if you connect a cloud model, use the Claude Desktop extension or send tasks to a service.
 
 **Do I need a GPU?** No. A regular laptop with 8 GB RAM runs the light model.
 
@@ -46,7 +46,7 @@ Templates: team meeting, sales call, 1:1, job interview, GOST. Exports: HTML, DO
 
 - **App:** download the installer from the [latest release](https://github.com/kozhevnikovai/protokolist/releases/latest) (`.exe` for Windows, `.dmg` for macOS 14.2+). Builds are not code-signed yet: on Windows choose "More info → Run anyway"; on macOS use "System Settings → Privacy & Security → Open Anyway". Models (≈3–7 GB depending on the chosen model) download once on first launch.
 - **Claude Desktop:** open the `.mcpb` from the release. Transcription runs locally, Claude writes the minutes, Protokolist verifies them against quotes.
-- **CLI** (Node.js 20+): `npx protokolist models`, then `npx protokolist meeting.m4a`.
+- **CLI** (Node.js 22.12+): `npx protokolist models`, then `npx protokolist meeting.m4a`.
 
 ## Models
 
