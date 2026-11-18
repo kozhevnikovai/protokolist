@@ -81,7 +81,7 @@ function linuxNode() {
 function startWorker() {
   const node = linuxNode();
   const w = worker = node
-    ? fork(join(here, "worker.mjs"), [], { execPath: node, serialization: "advanced", stdio: ["ignore", "pipe", "pipe", "ipc"], env: (({ ELECTRON_RUN_AS_NODE, ...e }) => e)(process.env) })
+    ? fork(join(here, "worker.mjs"), [], { execPath: node, execArgv: [], serialization: "advanced", stdio: ["ignore", "pipe", "pipe", "ipc"], env: (({ ELECTRON_RUN_AS_NODE, ...e }) => e)(process.env) })
     : utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "pipe" });
   if (node) w.postMessage = m => { if (w.connected) w.send(m); };
   let tail = "";
@@ -101,7 +101,8 @@ function startWorker() {
     const methods = [...pending.values()].map(p => p.method).join(", ") || "—";
     const why = exitReason(code);
     logWorker(`обработчик завершился: код ${code}${why ? " (" + why + ")" : ""}, вызовы: ${methods}\n${tail.trim().split("\n").slice(-20).join("\n")}`);
-    for (const p of pending.values()) p.reject(new Error(`Обработчик завершился${why ? ": " + why : ""} (код ${code}). Подробности — в журнале ${workerLog()}. Попробуйте ещё раз`));
+    const smokeTail = process.env.PROTOKOLIST_SMOKE ? " | " + tail.trim().split("\n").slice(-4).join(" / ").slice(-300) : "";
+    for (const p of pending.values()) p.reject(new Error(`Обработчик завершился${why ? ": " + why : ""} (код ${code}). Подробности — в журнале ${workerLog()}. Попробуйте ещё раз${smokeTail}`));
     pending.clear(); worker = null;
   });
 }
