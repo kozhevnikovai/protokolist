@@ -63,7 +63,8 @@ await win.click("#make"); mark("make");
 await win.waitForSelector("#v-result:not([hidden])", { timeout: 20 * 60e3 }); mark("result"); await shot("app-result");
 // журнал обработчика: если разбор упал, причина (код выхода, stderr) попадёт в лог CI
 { const lp = await app.evaluate(({ app }) => app.getPath("logs")); try { log("worker.log:\n" + readFileSync(join(lp, "worker.log"), "utf8")); } catch { log("worker.log пуст — обработчик не падал"); }
-  log("экран результата:", (await win.textContent("#v-result")).replace(/\s+/g, " ").slice(0, 300)); }
+  const res = (await win.textContent("#v-result")).replace(/\s+/g, " ").slice(0, 300);
+  log("экран результата:", res); console.log(`::notice title=capture::${/Не получилось/.test(res) ? "ОШИБКА: " : "протокол готов: "}${res.slice(0, 200)}`); }
 // 2. Архив и вопрос к архиву
 await nav("archive"); mark("archive"); await shot("app-archive");
 await win.fill("#ask-q", process.env.ASK_Q || "О чём говорили на встречах?"); await win.click("#ask-go"); mark("ask");
