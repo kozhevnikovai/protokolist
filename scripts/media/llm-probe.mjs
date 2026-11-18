@@ -9,6 +9,6 @@ const run = (name, start) => new Promise(r => { const t0 = Date.now(); const p =
 app.whenReady().then(async () => {
   const env = (v, m) => ({ ...process.env, VARIANT: v, PROBE_MODEL: m });
   await run("utility 4b", () => utilityProcess.fork(W, [], { env: env("default", "3-4b"), stdio: "inherit" }));
-  await run("utility 14b", () => utilityProcess.fork(W, [], { env: env("default", "14b"), stdio: "inherit" }));
+  if (!process.env.PROBE_ONLY_4B) await run("utility 14b", () => utilityProcess.fork(W, [], { env: env("default", "14b"), stdio: "inherit" }));
   app.quit();
 });

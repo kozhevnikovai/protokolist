@@ -1,0 +1,25 @@
+name: probe
+# Временная проба: загрузка языковой модели в процессе Electron на Windows и macOS (поиск падения с кодом 132)
+on:
+  push:
+    branches: ['media/worker-crash']
+    paths: ['.github/workflows/probe.yml', 'scripts/media/llm-probe*.mjs']
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix: { os: [windows-latest, macos-latest] }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      PROTOKOLIST_HOME: ${{ github.workspace }}/pk
+      PROBE_ONLY_4B: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci && npm run build
+      - run: node dist/cli.js models --model qwen3-4b
+      - name: Проба в Electron
+        shell: bash
+        run: npx electron scripts/media/llm-probe.mjs
