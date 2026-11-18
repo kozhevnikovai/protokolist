@@ -379,7 +379,7 @@ app.whenReady().then(() => { if (!gotLock) return; migrateSecrets(); cleanTemp()
 
 // Самопроверка собранного приложения (CI): обработчик, модели, распознавание файла, скриншот окна
 async function smoke(file) {
-  const fail = e => { console.error("SMOKE FAIL", e?.message ?? e); app.exit(1); };
+  const fail = e => { const m = String(e?.message ?? e).replace(/\s+/g, " ").slice(0, 300); console.error("SMOKE FAIL", m); if (process.env.GITHUB_ACTIONS) console.log(`::error title=smoke::${m}`); app.exit(1); };
   setTimeout(() => fail("таймаут"), 600_000);
   try {
     await new Promise(r => win.webContents.once("did-finish-load", r));
