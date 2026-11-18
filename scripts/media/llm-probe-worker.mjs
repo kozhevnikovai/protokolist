@@ -1,11 +1,18 @@
-import * as core from "../../dist/index.js";
-const say = m => process.parentPort.postMessage(m);
-const ctx = Number(process.env.PROBE_CTX);
-say("загрузка модели");
-const m = await core.createLLM({ ...core.loadConfig().llm, contextSize: ctx });
-say("модель загружена");
-const t = await m.text("Отвечай кратко.", "Перечисли три дня недели.", 40);
-say("ответ: " + t.replace(/\s+/g, " ").slice(0, 60));
-await m.dispose();
-say("выгружена");
+// Проба загрузки модели напрямую через node-llama-cpp; VARIANT: default | nommap | directio
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+const say = m => (process.parentPort ? process.parentPort.postMessage(m) : process.send?.(m), console.log("[probe-worker] " + m));
+const dir = join(process.env.PROTOKOLIST_HOME, "models", "llm");
+const file = join(dir, readdirSync(dir).find(f => f.endsWith(".gguf")));
+const v = process.env.VARIANT || "default";
+const { getLlama, LlamaLogLevel } = await import("node-llama-cpp");
+say(`${v}: getLlama`);
+const llama = await getLlama({ gpu: false, logLevel: LlamaLogLevel.debug, logger: (lvl, text) => { const t = String(text).trim(); if (t) console.log(`[llama ${lvl}] ${t.slice(0, 200)}`); } });
+say(`${v}: loadModel ${file}`);
+const opts = v === "nommap" ? { useMmap: false } : v === "directio" ? { useDirectIo: true } : {};
+const model = await llama.loadModel({ modelPath: file, ...opts });
+say(`${v}: createContext`);
+const ctx = await model.createContext({ contextSize: 4096 });
+say(`${v}: ok`);
+await ctx.dispose(); await model.dispose(); await llama.dispose();
 process.exit(0);
