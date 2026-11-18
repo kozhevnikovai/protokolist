@@ -101,7 +101,7 @@ const methods = {
   },
   livePush({ source, pcm }) {
     if (!live || !(source in { me: 1, others: 1 })) return false;
-    const a = pcm instanceof Float32Array ? pcm : new Float32Array(pcm);
+    const a = typeof pcm === "string" ? new Float32Array(new Uint8Array(Buffer.from(pcm, "base64")).buffer) : pcm instanceof Float32Array ? pcm : new Float32Array(pcm);
     live[source].push(a.subarray(0, 16000 * 10)); // не больше 10 с за раз
     return true;
   },

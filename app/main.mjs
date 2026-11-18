@@ -81,9 +81,14 @@ function linuxNode() {
 function startWorker() {
   const node = linuxNode();
   const w = worker = node
-    ? fork(join(here, "worker.mjs"), [], { execPath: node, execArgv: [], serialization: "advanced", stdio: ["ignore", "pipe", "pipe", "ipc"], env: (({ ELECTRON_RUN_AS_NODE, ...e }) => e)(process.env) })
+    ? fork(join(here, "worker.mjs"), [], { execPath: node, execArgv: [], stdio: ["ignore", "pipe", "pipe", "ipc"], env: (({ ELECTRON_RUN_AS_NODE, ...e }) => e)(process.env) })
     : utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "pipe" });
-  if (node) w.postMessage = m => { if (w.connected) w.send(m); };
+  // JSON между Electron и Node (формат V8 у них разный); звук субтитров — в base64
+  if (node) w.postMessage = m => {
+    if (!w.connected) return;
+    if (m?.type === "pcm" && m.pcm) { const a = m.pcm instanceof Float32Array ? m.pcm : new Float32Array(m.pcm); m = { ...m, pcm: Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString("base64"), b64: true }; }
+    w.send(m);
+  };
   let tail = "";
   const keep = (dst) => b => { dst.write(b); tail = (tail + b.toString()).slice(-4000); };
   w.stdout?.on("data", keep(process.stdout)); w.stderr?.on("data", keep(process.stderr));
