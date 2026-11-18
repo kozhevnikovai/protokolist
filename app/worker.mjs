@@ -2,7 +2,8 @@
 import * as core from "../dist/index.js";
 import { brokenMeetings, listMeetings, listTasks, load, searchMeetings, hitLine } from "../dist/archive.js";
 
-const port = process.parentPort;
+// Обычно — процесс обработчика Electron; на Linux — процесс Node (см. app/main.mjs, startWorker)
+const port = process.parentPort ?? { postMessage: m => process.send(m), on: (ev, fn) => process.on(ev, data => fn({ data })) };
 const progress = (stage, done, total) => port.postMessage({ type: "progress", stage, done, total });
 const net = () => port.postMessage({ type: "net", ...core.netStats() });
 

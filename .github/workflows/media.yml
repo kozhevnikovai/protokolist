@@ -39,11 +39,6 @@ jobs:
         run: |
           node dist/cli.js test/audio/meeting-3-speakers.ogg --date 2026-11-09
           node dist/cli.js src-audio/b.wav --date 2026-11-12
-      - name: Проба модели в процессе Electron
-        continue-on-error: true
-        run: |
-          node dist/cli.js models --model qwen3-4b
-          xvfb-run -a npx electron --no-sandbox scripts/media/llm-probe.mjs
       - run: npx playwright-core install ffmpeg
       - name: Съёмка приложения
         run: LIVE_PCM=src-audio/live.pcm xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/media/capture.mjs

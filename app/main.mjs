@@ -1,7 +1,7 @@
 // Протоколист — настольное приложение (Electron). Главный процесс: окно, запись звука, фоновый обработчик.
 import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerSaveBlocker, safeStorage, screen, session, shell, Tray, utilityProcess } from "electron";
 import { CALL, fmtElapsed, HOTKEY, hotkeyLabel, indicatorBounds, isCommand, macMeeting, nextState, toggleAction, trayItems, trayTooltip } from "./recctl.mjs";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync, fork } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
@@ -61,15 +61,33 @@ function logWorker(line) { try { mkdirSync(app.getPath("logs"), { recursive: tru
 /** Понятная причина по коду выхода */
 function exitReason(code) {
   if (code === 137 || code === 9) return "не хватило памяти или процесс остановлен системой";
+  if (code === 132) return "языковая модель не смогла выделить память в этой системе";
   if (code === 139 || code === 11 || code === 134 || code === 6 || code === 3221225477) return "сбой библиотеки распознавания или языковой модели";
   return "";
 }
+// Linux: Electron подменяет системный malloc своим (PartitionAlloc), и llama.cpp не может выделить буфер весов —
+// процесс падает с кодом 132. На Linux (разработка, CI) обработчик запускаем обычным Node 22+, если он установлен.
+// Windows и macOS проверены: там модель работает в процессе обработчика Electron.
+let nodeBin;
+function linuxNode() {
+  if (nodeBin !== undefined) return nodeBin;
+  nodeBin = null;
+  if (process.platform !== "linux" || process.env.PROTOKOLIST_NO_NODE) return nodeBin;
+  const bin = process.env.PROTOKOLIST_NODE || "node";
+  try { const v = execFileSync(bin, ["-v"], { encoding: "utf8", timeout: 5000 }).trim(); if (Number(v.slice(1).split(".")[0]) >= 22) nodeBin = bin; } catch { /* Node не установлен */ }
+  if (!nodeBin) logWorker("Linux: Node 22+ не найден — языковая модель в процессе Electron может не загрузиться");
+  return nodeBin;
+}
 function startWorker() {
-  const w = worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "pipe" });
+  const node = linuxNode();
+  const w = worker = node
+    ? fork(join(here, "worker.mjs"), [], { execPath: node, serialization: "advanced", stdio: ["ignore", "pipe", "pipe", "ipc"], env: (({ ELECTRON_RUN_AS_NODE, ...e }) => e)(process.env) })
+    : utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "pipe" });
+  if (node) w.postMessage = m => { if (w.connected) w.send(m); };
   let tail = "";
   const keep = (dst) => b => { dst.write(b); tail = (tail + b.toString()).slice(-4000); };
   w.stdout?.on("data", keep(process.stdout)); w.stderr?.on("data", keep(process.stderr));
-  w.on("error", (type, location) => logWorker(`ошибка процесса: ${type} ${location ?? ""}`));
+  w.on("error", (type, location) => logWorker(`ошибка процесса: ${type?.message ?? type} ${location ?? ""}`));
   w.on("message", m => {
     if (m.type === "progress" || m.type === "net" || m.type === "live" || m.type === "live-text") return win?.webContents.send(m.type, m);
     const p = pending.get(m.id);
@@ -77,7 +95,8 @@ function startWorker() {
     pending.delete(m.id);
     m.error ? p.reject(new Error(m.error)) : p.resolve(m.result);
   });
-  w.on("exit", code => {
+  w.on("exit", (code, signal) => {
+    if (code === null && signal) code = { SIGILL: 132, SIGKILL: 137, SIGSEGV: 139, SIGABRT: 134 }[signal] ?? signal;
     if (worker !== w) return;
     const methods = [...pending.values()].map(p => p.method).join(", ") || "—";
     const why = exitReason(code);
