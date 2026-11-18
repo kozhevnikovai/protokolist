@@ -1,4 +1,5 @@
 // Съёмка настоящей работы приложения для README и роликов.
+// В Linux обработчик работает под Node 22+ (app/main.mjs, startWorker) — языковая модель доходит до протокола.
 // Звук встречи подаётся как «звук компьютера»: getDisplayMedia подменяется потоком из файла (как звонок в Zoom).
 import { _electron as electron, chromium } from "playwright-core";
 import { readFileSync, readdirSync, mkdirSync, statSync, copyFileSync, writeFileSync } from "node:fs";
