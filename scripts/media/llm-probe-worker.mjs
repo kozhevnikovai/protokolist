@@ -7,7 +7,7 @@ const file = join(dir, readdirSync(dir).find(f => f.endsWith(".gguf") && f.toLow
 const v = process.env.VARIANT || "default";
 const { getLlama, LlamaLogLevel } = await import("node-llama-cpp");
 say(`${v}: getLlama`);
-const llama = await getLlama({ gpu: false, logLevel: LlamaLogLevel.info, logger: (lvl, text) => { const t = String(text).trim(); if (t) console.log(`[llama ${lvl}] ${t.slice(0, 200)}`); } });
+const llama = await getLlama({ gpu: process.platform === "darwin" ? "auto" : false, logLevel: LlamaLogLevel.info, logger: (lvl, text) => { const t = String(text).trim(); if (t) console.log(`[llama ${lvl}] ${t.slice(0, 200)}`); } });
 say(`${v}: loadModel ${file}`);
 const opts = v === "nommap" ? { useMmap: false } : v === "directio" ? { useDirectIo: true } : {};
 const model = await llama.loadModel({ modelPath: file, ...opts });
