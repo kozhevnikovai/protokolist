@@ -1,4 +1,5 @@
 // Съёмка настоящей работы приложения для README и роликов.
+// В Linux обработчик работает под Node 22+ (app/main.mjs, startWorker) — языковая модель доходит до протокола.
 // Звук встречи подаётся как «звук компьютера»: getDisplayMedia подменяется потоком из файла (как звонок в Zoom).
 import { _electron as electron, chromium } from "playwright-core";
 import { readFileSync, readdirSync, mkdirSync, statSync, copyFileSync, writeFileSync } from "node:fs";
@@ -61,6 +62,10 @@ await win.waitForSelector("#speakers:not([hidden])", { timeout: 12 * 60e3 }); ma
 await win.click("#make"); mark("make");
 // разбор обязан дойти до протокола: таймаут — это ошибка съёмки, а не повод продолжать на свежем запуске
 await win.waitForSelector("#v-result:not([hidden])", { timeout: 20 * 60e3 }); mark("result"); await shot("app-result");
+// журнал обработчика: если разбор упал, причина (код выхода, stderr) попадёт в лог CI
+{ const lp = await app.evaluate(({ app }) => app.getPath("logs")); try { log("worker.log:\n" + readFileSync(join(lp, "worker.log"), "utf8")); } catch { log("worker.log пуст — обработчик не падал"); }
+  const res = (await win.textContent("#v-result")).replace(/\s+/g, " ").slice(0, 300);
+  log("экран результата:", res); console.log(`::notice title=capture::${/Не получилось/.test(res) ? "ОШИБКА: " : "протокол готов: "}${res.slice(0, 200)}`); }
 // 2. Архив и вопрос к архиву
 await nav("archive"); mark("archive"); await shot("app-archive");
 await win.fill("#ask-q", process.env.ASK_Q || "О чём говорили на встречах?"); await win.click("#ask-go"); mark("ask");

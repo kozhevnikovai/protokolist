@@ -1,7 +1,7 @@
 // Протоколист — настольное приложение (Electron). Главный процесс: окно, запись звука, фоновый обработчик.
 import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerSaveBlocker, safeStorage, screen, session, shell, Tray, utilityProcess } from "electron";
 import { CALL, fmtElapsed, HOTKEY, hotkeyLabel, indicatorBounds, isCommand, macMeeting, nextState, toggleAction, trayItems, trayTooltip } from "./recctl.mjs";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync, fork } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
@@ -55,8 +55,44 @@ let worker;
 const pending = new Map();
 let seq = 0;
 
+// Журнал обработчика: код выхода, сигнал и последние строки ошибок — иначе молчаливое падение не разобрать
+const workerLog = () => join(app.getPath("logs"), "worker.log");
+function logWorker(line) { try { mkdirSync(app.getPath("logs"), { recursive: true }); appendFileSync(workerLog(), `${new Date().toISOString()} ${line}\n`); } catch { /* журнал не важнее работы */ } console.error("[worker] " + line); }
+/** Понятная причина по коду выхода */
+function exitReason(code) {
+  if (code === 137 || code === 9) return "не хватило памяти или процесс остановлен системой";
+  if (code === 132) return "языковая модель не смогла выделить память в этой системе";
+  if (code === 139 || code === 11 || code === 134 || code === 6 || code === 3221225477) return "сбой библиотеки распознавания или языковой модели";
+  return "";
+}
+// Linux: Electron подменяет системный malloc своим (PartitionAlloc), и llama.cpp не может выделить буфер весов —
+// процесс падает с кодом 132. На Linux (разработка, CI) обработчик запускаем обычным Node 22+, если он установлен.
+// Windows и macOS проверены: там модель работает в процессе обработчика Electron.
+let nodeBin;
+function linuxNode() {
+  if (nodeBin !== undefined) return nodeBin;
+  nodeBin = null;
+  if (process.platform !== "linux" || process.env.PROTOKOLIST_NO_NODE) return nodeBin;
+  const bin = process.env.PROTOKOLIST_NODE || "node";
+  try { const v = execFileSync(bin, ["-v"], { encoding: "utf8", timeout: 5000 }).trim(); if (Number(v.slice(1).split(".")[0]) >= 22) nodeBin = bin; } catch { /* Node не установлен */ }
+  if (!nodeBin) logWorker("Linux: Node 22+ не найден — языковая модель в процессе Electron может не загрузиться");
+  return nodeBin;
+}
 function startWorker() {
-  const w = worker = utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "inherit" });
+  const node = linuxNode();
+  const w = worker = node
+    ? fork(join(here, "worker.mjs"), [], { execPath: node, execArgv: [], stdio: ["ignore", "pipe", "pipe", "ipc"], env: (({ ELECTRON_RUN_AS_NODE, ...e }) => e)(process.env) })
+    : utilityProcess.fork(join(here, "worker.mjs"), [], { serviceName: "Протоколист: обработка", stdio: "pipe" });
+  // JSON между Electron и Node (формат V8 у них разный); звук субтитров — в base64
+  if (node) w.postMessage = m => {
+    if (!w.connected) return;
+    if (m?.type === "pcm" && m.pcm) { const a = m.pcm instanceof Float32Array ? m.pcm : new Float32Array(m.pcm); m = { ...m, pcm: Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString("base64"), b64: true }; }
+    w.send(m);
+  };
+  let tail = "";
+  const keep = (dst) => b => { dst.write(b); tail = (tail + b.toString()).slice(-4000); };
+  w.stdout?.on("data", keep(process.stdout)); w.stderr?.on("data", keep(process.stderr));
+  w.on("error", (type, location) => logWorker(`ошибка процесса: ${type?.message ?? type} ${location ?? ""}`));
   w.on("message", m => {
     if (m.type === "progress" || m.type === "net" || m.type === "live" || m.type === "live-text") return win?.webContents.send(m.type, m);
     const p = pending.get(m.id);
@@ -64,7 +100,16 @@ function startWorker() {
     pending.delete(m.id);
     m.error ? p.reject(new Error(m.error)) : p.resolve(m.result);
   });
-  w.on("exit", () => { if (worker !== w) return; for (const p of pending.values()) p.reject(new Error("Обработчик завершился — попробуйте ещё раз")); pending.clear(); worker = null; });
+  w.on("exit", (code, signal) => {
+    if (code === null && signal) code = { SIGILL: 132, SIGKILL: 137, SIGSEGV: 139, SIGABRT: 134 }[signal] ?? signal;
+    if (worker !== w) return;
+    const methods = [...pending.values()].map(p => p.method).join(", ") || "—";
+    const why = exitReason(code);
+    logWorker(`обработчик завершился: код ${code}${why ? " (" + why + ")" : ""}, вызовы: ${methods}\n${tail.trim().split("\n").slice(-20).join("\n")}`);
+    const smokeTail = process.env.PROTOKOLIST_SMOKE ? " | " + tail.trim().split("\n").slice(-4).join(" / ").slice(-300) : "";
+    for (const p of pending.values()) p.reject(new Error(`Обработчик завершился${why ? ": " + why : ""} (код ${code}). Подробности — в журнале ${workerLog()}. Попробуйте ещё раз${smokeTail}`));
+    pending.clear(); worker = null;
+  });
 }
 // После языковой модели и живых субтитров обработчик держит потоки llama.cpp и распознавателей;
 // разбор голосов (onnxruntime) в том же процессе может зависнуть — запись разбираем в свежем процессе.
@@ -74,7 +119,9 @@ async function recycle() {
   const w = worker; if (!w || [...pending.values()].some(p => p.method === "download")) return; // загрузку моделей не прерываем
   for (const p of pending.values()) p.reject(new Error("Обработчик перезапущен")); pending.clear();
   worker = null;
-  await new Promise(r => { w.once("exit", r); w.kill(); setTimeout(r, 5000); });
+  const gone = await new Promise(r => { w.once("exit", () => r(true)); w.kill(); setTimeout(() => r(false), 5000); });
+  // старый процесс держит модель в памяти — не начинаем разбор рядом с ним
+  if (!gone && w.pid) { try { process.kill(w.pid, "SIGKILL"); } catch { /* уже завершился */ } await new Promise(r => setTimeout(r, 1000)); }
 }
 async function call(method, args) {
   if (method === "transcribe" && used) { used = false; await recycle(); }
@@ -338,7 +385,7 @@ app.whenReady().then(() => { if (!gotLock) return; migrateSecrets(); cleanTemp()
 
 // Самопроверка собранного приложения (CI): обработчик, модели, распознавание файла, скриншот окна
 async function smoke(file) {
-  const fail = e => { console.error("SMOKE FAIL", e?.message ?? e); app.exit(1); };
+  const fail = e => { const m = String(e?.message ?? e).replace(/\s+/g, " ").slice(0, 300); console.error("SMOKE FAIL", m); if (process.env.GITHUB_ACTIONS) console.log(`::error title=smoke::${m}`); app.exit(1); };
   setTimeout(() => fail("таймаут"), 600_000);
   try {
     await new Promise(r => win.webContents.once("did-finish-load", r));

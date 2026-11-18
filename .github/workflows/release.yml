@@ -37,17 +37,31 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: github.event_name != 'release'
         with: { name: "build-${{ matrix.os }}", path: "release/*.exe\nrelease/*.zip\nrelease/*.dmg\nbuild/*.mcpb" }
+  sums:
+    # SHA256SUMS: суммы всех файлов релиза — для ручной проверки скачанного
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ github.event.release.tag_name }}" }
+    steps:
+      - name: SHA256SUMS
+        run: |
+          set -euo pipefail
+          mkdir d && cd d
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY"
+          rm -f SHA256SUMS && sha256sum * > SHA256SUMS && cat SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS --clobber -R "$GITHUB_REPOSITORY"
   npm:
     needs: build
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
     env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with: { node-version: 22, registry-url: https://registry.npmjs.org }
       - run: npm ci && npm run build
-      - name: npm publish (если задан NPM_TOKEN)
-        continue-on-error: true
-        if: ${{ env.NODE_AUTH_TOKEN != '' }}
-        run: npm publish --access public
+      # Trusted Publishing (OIDC, без токена) — нужен npm 11.5+; первый выпуск нового пакета — по секрету NPM_TOKEN
+      - run: npm install -g npm@latest
+      - run: npm publish --access public
